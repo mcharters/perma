@@ -509,8 +509,8 @@ TEMPLATE_DEBUG = False
 THUMBNAIL_STORAGE_PATH = 'thumbnails'
 
 # feature flags
-SINGLE_LINK_HEADER_TEST = False
-ENABLE_BATCH_LINKS = False
+SINGLE_LINK_HEADER_TEST = True
+ENABLE_BATCH_LINKS = True
 # N.B. If True, requires RUN_TASKS_ASYNC = True
 
 # security settings -- set these to true if SSL is available

@@ -43,16 +43,16 @@
 /******/ ({
 
 /***/ 0:
-/***/ function(module, exports, __webpack_require__) {
+/***/ (function(module, exports, __webpack_require__) {
 
 	__webpack_require__(216);
 	module.exports = __webpack_require__(217);
 
 
-/***/ },
+/***/ }),
 
 /***/ 216:
-/***/ function(module, exports) {
+/***/ (function(module, exports) {
 
 	"use strict";
 	
@@ -95,14 +95,14 @@
 	
 	init();
 
-/***/ },
+/***/ }),
 
 /***/ 217:
-/***/ function(module, exports) {
+/***/ (function(module, exports) {
 
 	// removed by extract-text-webpack-plugin
 
-/***/ }
+/***/ })
 
 /******/ });
 //# sourceMappingURL=single-link.js.map
