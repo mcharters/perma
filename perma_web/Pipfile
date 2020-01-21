@@ -23,6 +23,8 @@ mysqlclient = "~=1.3.0"
 django-redis = "==4.4.3"                    # use redis as django's cache backend
 redis = "==2.10.5"                          # Needed to bind with Redis.
 sqlparse = "*"                              # for data migrations
+pyodbc = "*"
+django-pyodbc-azure = "<1.11.18"
 
 
 # models
