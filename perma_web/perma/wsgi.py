@@ -9,6 +9,9 @@ this application via the ``WSGI_APPLICATION`` setting.
 """
 import os
 import perma.settings
+from django.http import Http404
+from django.db import connections
+from urllib import parse
 
 # Newrelic setup
 use_newrelic = os.environ.get("USE_NEW_RELIC", False)
@@ -24,6 +27,7 @@ os.environ.setdefault("CELERY_LOADER", "django")
 
 # these imports may depend on env setup and/or newrelic setup that came earlier
 from werkzeug.wsgi import DispatcherMiddleware
+from werkzeug.wrappers import Response
 from django.core.wsgi import get_wsgi_application
 from warc_server.app import application as warc_application
 
@@ -40,13 +44,39 @@ class PywbRedirectMiddleware:
 
         return self.pywb(environ, start_response)
 
+class CharityCANAuthMiddleware:
+    def __init__(self, pywb, realm="Login"):
+        self.pywb = pywb
+        self._realm = realm
+        self.isAuthenticated = False
+
+    def __call__(self, environ, start_response):
+        if self._authenticated(parse.parse_qs(environ.get('QUERY_STRING')), environ):
+            self.isAuthenticated = True
+            return self.pywb(environ, start_response)
+        return self._noaccess(environ, start_response)
+
+    def _authenticated(self, query, environ):
+        if 'userID' in query:
+            del environ['QUERY_STRING']
+
+            with connections['charitycan'].cursor() as cursor:
+                cursor.execute('SELECT CurrentSession FROM tblUser where userID = %s', [query['userID'][0]])
+                row = cursor.fetchone()
+                return row and row[0] is not None
+
+        return False
+
+    def _noaccess(self, environ, start_response):
+        response = Response("You don't have access to this resource.", 401)
+        return response(environ, start_response)
 
 # Main application setup
 application = DispatcherMiddleware(
     get_wsgi_application(),  # Django app
     {
         perma.settings.TIMEGATE_WARC_ROUTE: PywbRedirectMiddleware(warc_application),
-        perma.settings.WARC_ROUTE: warc_application,  # pywb for record playback
+        perma.settings.WARC_ROUTE: CharityCANAuthMiddleware(warc_application),  # pywb for record playback
     }
 )
 

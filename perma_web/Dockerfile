@@ -45,6 +45,12 @@ RUN wget https://s3.amazonaws.com/perma/phantomjs-2.1.1-linux-x86_64.tar.bz2 \
     && ln -sf /usr/local/share/phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin \
     && rm phantomjs-2.1.1-linux-x86_64.tar.bz2
 
+# MSSQL drivers
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && curl https://packages.microsoft.com/config/debian/9/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql17
+
 # Get Node 6 instead of version in APT repository.
 # Downloads an installation script, which ends by running
 # apt-get update: no need to re-run at this layer
