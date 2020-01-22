@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "67b2b9d364665efcf095e37f23d0bf585ab6e692a3d64a07a7634d51094933b3"
+            "sha256": "8520ccce7c5b0f06e9df8f9493e836714f629eacd1f58e63710cc6aed13ce93f"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -109,10 +109,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:629ce71d425b9bc55553a7b0b0584c162edff04b00eb225ccec8f72cadc1c63c",
-                "sha256:7bd74f1c0f99344571fd322f2d7708deac0546b4ce19f52e971cc6daec4e2167"
+                "sha256:9a17d36ee43f1398c7db3cb29aa2216de94bcb60f058b1c645d71e72a330ddf8",
+                "sha256:e4b82b1a7389f3d16732eb839240c9d3e42470100d5a71415ea2a0a35b911b23"
             ],
-            "version": "==1.14.6"
+            "version": "==1.14.7"
         },
         "brotlipy": {
             "hashes": [
@@ -294,6 +294,13 @@
             ],
             "index": "pypi",
             "version": "==0.10.0"
+        },
+        "django-pyodbc-azure": {
+            "hashes": [
+                "sha256:cd2ba65e2932d6762af28fe9466f6fbda43cd250876befdec184cdc2cb8a309a"
+            ],
+            "index": "pypi",
+            "version": "==1.11.15.0"
         },
         "django-ratelimit": {
             "hashes": [
@@ -603,6 +610,25 @@
             ],
             "index": "pypi",
             "version": "==1.3.0"
+        },
+        "pyodbc": {
+            "hashes": [
+                "sha256:2217eb01091a207a9ffa457c49a63a1d0eb8514c810a23b901518348422fcf65",
+                "sha256:259b2554d2b8c9a6247871fec741b526f0b63a0e42676bd8f210e214a3015129",
+                "sha256:2908f73e5a374437fd7a38f14b09f2b96d742235bf2f819fb697f8922e35ddda",
+                "sha256:49ba851be2d9d07cc1472b43febc93e3362c1e09ceb3eac84693a6690d090165",
+                "sha256:4f3c788d231907f45ea329cd245b398b165d9d28809f55814240eea775a6b1cd",
+                "sha256:510643354c4c687ed96bf7e7cec4d02d6c626ecf3e18696f5a0228dd6d11b769",
+                "sha256:5d1abca8f5bdab1515e300d05c63c25d072a123c7089a554290b5b9e83168eb6",
+                "sha256:8ad9aa2a851242109141e4275c2a9b4d4379e00288959acd877501ee90aa3955",
+                "sha256:93e495c51a5db027c2f7ee2c2c3fe9d6ea86b3a61392c7c8961a1818951868c8",
+                "sha256:a1a1687edef4319ae533e1d789c6c8241459f04af9e4db76e6e4045c530239de",
+                "sha256:ae35c455bfbadc631ee20df6657bfda0779bdc80badfd9d13741433dd78785e6",
+                "sha256:c25e525e0576b1dfa067d3a6530e046a24006d89715026d2d5dbf6d4290093b9",
+                "sha256:f37f26ae909101465a085ef51b9dde35afc93b7c7e38c25b61b124b110aa9998"
+            ],
+            "index": "pypi",
+            "version": "==4.0.28"
         },
         "pyopenssl": {
             "hashes": [
