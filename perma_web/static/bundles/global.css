@@ -7565,25 +7565,25 @@ img {
 
 @keyframes breathe-blue {
   0% {
-    border-color: #2D76EE;
+    border-color: #005D6D;
   }
 
   30% {
-    border-color: #eaf1fd;
+    border-color: #3ae2ff;
   }
 
   45% {
-    border-color: #eaf1fd;
+    border-color: #3ae2ff;
   }
 
   100% {
-    border-color: #2D76EE;
+    border-color: #005D6D;
   }
 }
 
 @keyframes fade-blue {
   0% {
-    border-color: #2D76EE;
+    border-color: #005D6D;
   }
 
   100% {
@@ -7647,7 +7647,7 @@ a.perma:focus,
 .item-affil a:focus,
 .section-list li a strong:focus,
 section .caption a:focus {
-  color: #0092FF;
+  color: #005D6D;
 }
 
 .style-standard-hover:active,
@@ -7670,8 +7670,8 @@ section .caption a:active {
 .primary-intro a:hover,
 .style-standard-border-hover:focus,
 .primary-intro a:focus {
-  color: #0092FF;
-  border-color: #0092FF;
+  color: #005D6D;
+  border-color: #005D6D;
 }
 
 .style-standard-border-hover:active,
@@ -7692,7 +7692,7 @@ form .btn:focus,
 .navbar-toggle:focus,
 span.action:focus,
 a.action-heading:focus {
-  background-color: #0092FF;
+  background-color: #005D6D;
 }
 
 .style-button-hover:active,
@@ -8019,7 +8019,7 @@ h1 + div {
 }
 
 h1 .subsection {
-  color: #2D76EE;
+  color: #005D6D;
   font-size: 28px;
   display: none;
   margin-top: 8px;
@@ -8052,7 +8052,7 @@ h4 {
 }
 
 .docs h4 {
-  color: #2D76EE;
+  color: #005D6D;
   font-size: 22px;
 }
 
@@ -8080,7 +8080,7 @@ p a {
 }
 
 p a:hover {
-  color: #2D76EE;
+  color: #005D6D;
   text-decoration: underline;
 }
 
@@ -8205,7 +8205,7 @@ strong.vocab {
 .circle {
   width: 32px;
   height: 32px;
-  background-color: #2D76EE;
+  background-color: #005D6D;
   margin: 0 auto;
   border-radius: 32px;
 }
@@ -8229,7 +8229,7 @@ strong.vocab {
 }
 
 .blue-text {
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 a {
@@ -8244,18 +8244,18 @@ a.perma,
 p a.perma {
   font-family: "Roboto", Helvetica, Arial, "Lucida Grande", sans-serif;
   font-weight: 900;
-  color: #2D76EE;
+  color: #005D6D;
   white-space: nowrap;
   font-size: 12px;
   padding: 2px 4px;
-  border: 2px solid #2D76EE;
+  border: 2px solid #005D6D;
   vertical-align: middle;
   border-radius: 2px;
 }
 
 a.perma:hover {
   text-decoration: none;
-  border-color: #0092FF;
+  border-color: #005D6D;
 }
 
 a.perma:hover:before {
@@ -8345,7 +8345,7 @@ a.xs-badge-sq strong {
 
 @media only screen and (min-width: 768px) {
   a.sm-badge {
-    color: #0092FF;
+    color: #005D6D;
     background-color: white;
     width: 120px;
     height: 120px;
@@ -8353,7 +8353,7 @@ a.xs-badge-sq strong {
     margin-top: 0;
     margin-bottom: 16px;
     display: block;
-    border: 1px solid #2D76EE;
+    border: 1px solid #005D6D;
     float: right;
     font-size: 12px;
     padding-top: 26px;
@@ -8417,8 +8417,8 @@ a.action:focus {
 }
 
 a.action:active {
-  background-color: #2D76EE;
-  border-color: #2D76EE;
+  background-color: #005D6D;
+  border-color: #005D6D;
 }
 
 a.action.action-delete {
@@ -8438,14 +8438,14 @@ a.action.action-delete:active {
 }
 
 a.action.action-approve {
-  border-color: #2D76EE;
-  color: #2D76EE;
+  border-color: #005D6D;
+  color: #005D6D;
 }
 
 a.action.action-approve:hover,
 a.action.action-approve:focus {
-  background-color: #2D76EE;
-  border-color: #2D76EE;
+  background-color: #005D6D;
+  border-color: #005D6D;
 }
 
 a.action.action-approve:active {
@@ -8459,7 +8459,7 @@ a.cc {
   height: 16px;
   overflow: hidden;
   text-indent: -10000px;
-  background-color: #2D76EE;
+  background-color: #005D6D;
   background-image: url(data:image/png;base64,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);
   background-size: 90px 7px;
   background-repeat: no-repeat;
@@ -8467,15 +8467,15 @@ a.cc {
   position: relative;
   bottom: -3px;
   padding: 0;
-  border: 2px solid #2D76EE;
+  border: 2px solid #005D6D;
   border-radius: 2px;
   margin: 0 .2em;
 }
 
 a.cc:hover {
   text-decoration: none;
-  border-color: #0092FF;
-  background-color: #0092FF;
+  border-color: #005D6D;
+  background-color: #005D6D;
 }
 
 a.cc:active {
@@ -8865,7 +8865,7 @@ a.cc:active {
   cursor: pointer;
   border: 2px solid transparent;
   border-radius: 2px;
-  background-color: #2D76EE;
+  background-color: #005D6D;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -8908,7 +8908,7 @@ a.cc:active {
 
 .btn:hover,
 .btn:focus {
-  background-color: #0092FF !important;
+  background-color: #005D6D !important;
   text-decoration: none !important;
   border-color: transparent;
   color: white !important;
@@ -8927,7 +8927,7 @@ a.cc:active {
   margin-top: 0;
   margin-left: 8px;
   margin-bottom: 0;
-  background-color: #0092FF;
+  background-color: #005D6D;
 }
 
 .btn._nav:hover,
@@ -9024,7 +9024,7 @@ a.cc:active {
   background-color: transparent;
   border: 2px solid;
   font-weight: 400;
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 .btn.btn-large-alt:hover,
@@ -9134,7 +9134,7 @@ button #addlink {
 
 .links-unlimited {
   color: white;
-  background-color: #2D76EE;
+  background-color: #005D6D;
 }
 
 .dropdown .selector {
@@ -9172,7 +9172,7 @@ button #addlink {
 }
 
 .dropdown .selector:hover {
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 .dropdown .selector:active {
@@ -9346,12 +9346,12 @@ button #addlink {
 
 .body-ah {
   font-size: 22px;
-  border-top: 2px solid #2D76EE;
+  border-top: 2px solid #005D6D;
   padding-top: 8px;
   margin-top: 48px;
   font-family: "Roboto", Helvetica, Arial, "Lucida Grande", sans-serif;
   font-weight: 700;
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 .body-ah:first-child,
@@ -9554,7 +9554,7 @@ button #addlink {
 }
 
 .modal-content input#file:focus {
-  border-color: #2D76EE;
+  border-color: #005D6D;
 }
 
 .modal-content .field-error {
@@ -9596,7 +9596,7 @@ button #addlink {
 
 .modal-header .modal-description {
   font-weight: 300;
-  color: #2D76EE;
+  color: #005D6D;
   margin-bottom: 0;
   font-size: 18px;
   line-height: 1.3;
@@ -9792,7 +9792,7 @@ button #addlink {
 .overview .row .overview-module._active .overview-module-content {
   pointer-events: none;
   background-color: white;
-  color: #2D76EE;
+  color: #005D6D;
   padding: 10px 14px;
   border: 3px solid transparent !important;
   margin-right: 1px;
@@ -9800,12 +9800,12 @@ button #addlink {
 }
 
 .overview .row .overview-module._active .overview-module-content p {
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 @media only screen and (min-width: 768px) {
   .overview .row .overview-module._active .overview-module-content {
-    border: 3px solid #2D76EE !important;
+    border: 3px solid #005D6D !important;
     padding: 12px 17px 10px 17px;
     margin-right: 0;
     margin-left: 0;
@@ -9848,7 +9848,7 @@ button #addlink {
 }
 
 .overview .row ._selected strong {
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 .overview .row ._selected strong:after {
@@ -9916,9 +9916,9 @@ button #addlink {
 }
 
 .overview-module a:hover {
-  background-color: #2D76EE !important;
-  border-left-color: #2D76EE !important;
-  border-right-color: #2D76EE !important;
+  background-color: #005D6D !important;
+  border-left-color: #005D6D !important;
+  border-right-color: #005D6D !important;
   color: white;
 }
 
@@ -9956,12 +9956,12 @@ button #addlink {
 
 .overview-module a._jump:hover {
   background-color: transparent !important;
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 .overview-module a._jump:hover p,
 .overview-module a._jump:hover strong {
-  color: #2D76EE !important;
+  color: #005D6D !important;
 }
 
 .overview-module a._jump:hover strong:after {
@@ -10132,8 +10132,8 @@ div.cont-reading + div.overview div.overview-module-content {
 }
 
 .reading-toc li a:hover {
-  color: #2D76EE !important;
-  border-color: #2D76EE !important;
+  color: #005D6D !important;
+  border-color: #005D6D !important;
 }
 
 .reading-toc li a:active {
@@ -10142,8 +10142,8 @@ div.cont-reading + div.overview div.overview-module-content {
 }
 
 .reading-toc li .reading-toc-chapter._active a {
-  border-color: #2D76EE;
-  color: #2D76EE;
+  border-color: #005D6D;
+  color: #005D6D;
 }
 
 .reading-toc li:last-of-type {
@@ -10510,7 +10510,7 @@ figcaption + .img-responsive {
 .close-browser-tools {
   font-size: 22px;
   font-weight: normal;
-  color: #2D76EE;
+  color: #005D6D;
   display: inline-block;
   top: 3px;
   padding: 0px;
@@ -10771,7 +10771,7 @@ figcaption + .img-responsive {
   text-align: center;
   padding-bottom: 0px;
   padding-top: 32px;
-  color: #2D76EE;
+  color: #005D6D;
   border-color: transparent !important;
   opacity: 1;
 }
@@ -10783,7 +10783,7 @@ figcaption + .img-responsive {
 
 #linker .form-priority-fieldset .btn._isWorking:hover,
 #linker .form-priority-fieldset .btn._isWorking:focus {
-  color: #2D76EE !important;
+  color: #005D6D !important;
 }
 
 #linker #create-batch-links {
@@ -10793,13 +10793,13 @@ figcaption + .img-responsive {
 
 #linker #create-batch-links a {
   font-weight: normal;
-  color: #2D76EE;
+  color: #005D6D;
   text-decoration: underline;
 }
 
 #linker #create-batch-links a:hover,
 #linker #create-batch-links a:focus {
-  color: #0092FF;
+  color: #005D6D;
   text-decoration: none;
 }
 
@@ -10836,7 +10836,7 @@ figcaption + .img-responsive {
 }
 
 #linker._isPrivate #organization_select_form .dropdown.open .selector {
-  color: #2D76EE;
+  color: #005D6D;
   background-color: white;
 }
 
@@ -10862,7 +10862,7 @@ figcaption + .img-responsive {
 
 #linker #links-remaining-message,
 #linker #browser-tools-message {
-  color: #2D76EE;
+  color: #005D6D;
   font-weight: 700;
 }
 
@@ -10877,7 +10877,7 @@ figcaption + .img-responsive {
 #linker #browser-tools-message .links-remaining {
   display: inline-block;
   padding: 1px 12px 0;
-  background-color: #2D76EE;
+  background-color: #005D6D;
   color: white;
   border-radius: 4px;
   margin: 0 2px;
@@ -10973,7 +10973,7 @@ figcaption + .img-responsive {
 
 #linker #personal-links-banner a {
   font-weight: normal;
-  color: #2D76EE;
+  color: #005D6D;
   text-decoration: underline;
   white-space: nowrap;
 }
@@ -11076,7 +11076,7 @@ form {
 }
 
 form .btn {
-  background-color: #2D76EE;
+  background-color: #005D6D;
 }
 
 fieldset {
@@ -11142,8 +11142,8 @@ input {
 }
 
 input:focus {
-  border-color: #2D76EE;
-  color: #2D76EE;
+  border-color: #005D6D;
+  color: #005D6D;
   background-color: white;
   box-shadow: none;
 }
@@ -11246,7 +11246,7 @@ input[type="submit"] {
 }
 
 .form-group select:focus {
-  border-color: #2D76EE;
+  border-color: #005D6D;
   box-shadow: none;
   -webkit-box-shadow: none;
 }
@@ -11266,7 +11266,7 @@ textarea {
 }
 
 textarea:focus {
-  border-color: #2D76EE;
+  border-color: #005D6D;
 }
 
 .form-group + .form-group {
@@ -11526,7 +11526,7 @@ button#addlink,
 
 @media only screen and (min-width: 768px) {
   .nav > li > a.navbar-link._login {
-    color: #0092FF;
+    color: #005D6D;
     text-decoration: none;
     font-family: "Roboto", Helvetica, Arial, "Lucida Grande", sans-serif;
     font-weight: 700;
@@ -11534,11 +11534,11 @@ button#addlink,
   }
 
   .nav > li > a.navbar-link._login:link {
-    color: #0092FF;
+    color: #005D6D;
   }
 
   .nav > li > a.navbar-link._login:visited {
-    color: #0092FF;
+    color: #005D6D;
   }
 
   .nav > li > a.navbar-link._login:hover {
@@ -11546,7 +11546,7 @@ button#addlink,
   }
 
   .nav > li > a.navbar-link._login:active {
-    color: #0092FF;
+    color: #005D6D;
   }
 }
 
@@ -11605,7 +11605,7 @@ button#addlink,
 
 #all-batches:hover,
 #all-batches:focus {
-  color: #0092FF;
+  color: #005D6D;
   text-decoration: none;
 }
 
@@ -11638,7 +11638,7 @@ button#addlink,
 }
 
 .nav > li > .dropdown-toggle:hover {
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 .nav > li > .dropdown-toggle:active {
@@ -11705,7 +11705,7 @@ li.dropdown {
   .navbar-default .navbar-nav > li > a:focus,
   .navbar-default .navbar-nav > li button:hover,
   .navbar-default .navbar-nav > li button:focus {
-    background-color: #0092FF;
+    background-color: #005D6D;
     color: white;
   }
 
@@ -11739,7 +11739,7 @@ li.dropdown {
   .navbar-default .navbar-nav .btn._nav:hover,
   .navbar-default .navbar-nav .btn._nav:focus {
     color: white;
-    background-color: #0092FF !important;
+    background-color: #005D6D !important;
   }
 
   .navbar-collapse.in .navbar-nav {
@@ -11799,7 +11799,7 @@ li.dropdown {
 .dropdown-menu > li > a:focus,
 .dropdown-menu > li button:hover,
 .dropdown-menu > li button:focus {
-  background-color: #0092FF;
+  background-color: #005D6D;
   color: white;
 }
 
@@ -11872,7 +11872,7 @@ li.dropdown {
 .dropdown-inner-list > li > a:focus,
 .dropdown-inner-list > li button:hover,
 .dropdown-inner-list > li button:focus {
-  background-color: #0092FF;
+  background-color: #005D6D;
   color: white;
 }
 
@@ -11911,7 +11911,7 @@ li.dropdown {
   text-align: right;
   padding-right: 11px;
   padding-top: 7px;
-  color: #2D76EE;
+  color: #005D6D;
   text-transform: uppercase;
 }
 
@@ -12083,7 +12083,7 @@ img.infinity-logo {
 footer {
   text-align: left;
   padding: 0 0 12px;
-  background: #2D76EE;
+  background: #005D6D;
   font-family: "Roboto", Helvetica, Arial, "Lucida Grande", sans-serif;
   color: white;
   font-weight: 700;
@@ -12097,7 +12097,7 @@ footer {
     right: 0;
     padding-top: 0;
     background: white;
-    color: #2D76EE;
+    color: #005D6D;
     font-size: 12px;
   }
 }
@@ -12298,7 +12298,7 @@ footer #boilerplate a {
 
 .nav-pills li a:hover,
 .nav-pills li a:focus {
-  background-color: #2D76EE;
+  background-color: #005D6D;
   color: white;
 }
 
@@ -12324,7 +12324,7 @@ footer #boilerplate a {
 
 .nav-pills li.active a {
   background-color: white;
-  color: #2D76EE;
+  color: #005D6D;
   cursor: default;
   padding-top: 7px;
   padding-bottom: 8px;
@@ -12338,7 +12338,7 @@ footer #boilerplate a {
 }
 
 .nav-pills li.active a:hover {
-  color: #2D76EE;
+  color: #005D6D;
   background-color: transparent;
 }
 
@@ -12346,7 +12346,7 @@ footer #boilerplate a {
   .nav-pills li.active a {
     font-size: 16px;
     font-weight: 400;
-    border: 2px solid #2D76EE;
+    border: 2px solid #005D6D;
   }
 }
 
@@ -12406,9 +12406,9 @@ footer #boilerplate a {
 
 .col-folders #folder-tree .jstree-clicked,
 .col-folders #folder-tree .jstree-clicked.jstree-hovered {
-  border: 1px solid #2D76EE;
+  border: 1px solid #005D6D;
   color: white;
-  background-color: #2D76EE;
+  background-color: #005D6D;
   box-shadow: none;
   padding-right: 6px;
 }
@@ -12595,7 +12595,7 @@ footer #boilerplate a {
   font-size: 24px;
   margin-top: 16px;
   font-family: "Roboto", Helvetica, Arial, "Lucida Grande", sans-serif;
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 @media only screen and (min-width: 768px) {
@@ -12762,7 +12762,7 @@ ol.result-list .admin-actions {
 .item-affil {
   font-size: 16px;
   font-weight: 200;
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 .item-affil:before {
@@ -13081,7 +13081,7 @@ a.action-heading {
   font-size: 16px;
   padding: 2px 6px 3px;
   border-radius: 2px;
-  background-color: #2D76EE;
+  background-color: #005D6D;
   color: white;
   font-weight: 400;
   cursor: pointer;
@@ -13161,7 +13161,7 @@ a.action-heading [class*=" icon-"] {
 
 .admin-data {
   margin: 24px 0 0;
-  border-top: 1px solid #2D76EE;
+  border-top: 1px solid #005D6D;
   padding-top: 1px;
 }
 
@@ -13173,7 +13173,7 @@ a.action-heading [class*=" icon-"] {
 
 .admin-data-point {
   text-align: center;
-  color: #2D76EE;
+  color: #005D6D;
   font-family: "Roboto", Helvetica, Arial, "Lucida Grande", sans-serif;
 }
 
@@ -13192,12 +13192,12 @@ a.action-heading [class*=" icon-"] {
 }
 
 .admin-data-point + .admin-data-point {
-  border-left: 1px solid #2D76EE;
+  border-left: 1px solid #005D6D;
 }
 
 .admin-data-point .count-label {
   padding: 8px;
-  color: #2D76EE;
+  color: #005D6D;
   font-weight: 700;
   margin-bottom: 0;
   font-size: 12px;
@@ -13214,7 +13214,7 @@ a.action-heading [class*=" icon-"] {
   padding: 0 8px 0;
   font-weight: 200;
   font-size: 36px;
-  color: #2D76EE;
+  color: #005D6D;
   line-height: 1;
 }
 
@@ -13306,8 +13306,8 @@ a.action-heading [class*=" icon-"] {
 }
 
 .admin-found {
-  border-top: 1px solid #2D76EE;
-  color: #2D76EE;
+  border-top: 1px solid #005D6D;
+  color: #005D6D;
   font-size: 15px;
   margin-top: 24px;
 }
@@ -13321,7 +13321,7 @@ a.action-heading [class*=" icon-"] {
 .sort-filter-bar {
   padding-top: 8px;
   padding-bottom: 16px;
-  border-top: 1px solid #2D76EE;
+  border-top: 1px solid #005D6D;
   float: left;
   clear: both;
   width: 100%;
@@ -13362,7 +13362,7 @@ a.action-heading [class*=" icon-"] {
 
 @media only screen and (max-width: 767px) {
   .sort-filter-bar {
-    border-bottom: 1px solid #2D76EE;
+    border-bottom: 1px solid #005D6D;
     padding-bottom: 8px;
   }
 
@@ -13372,7 +13372,7 @@ a.action-heading [class*=" icon-"] {
   }
 
   .sort-filter-bar div.dropdown + .dropdown {
-    border-top: 1px solid #2D76EE;
+    border-top: 1px solid #005D6D;
     margin-top: 8px;
     padding-top: 8px;
   }
@@ -13417,7 +13417,7 @@ a.action-heading [class*=" icon-"] {
 
 .sort-filter-bar .dropdown button:hover,
 .sort-filter-bar .dropdown button:focus {
-  color: #0092FF;
+  color: #005D6D;
 }
 
 @media only screen and (min-width: 990px) {
@@ -13433,7 +13433,7 @@ a.action-heading [class*=" icon-"] {
   padding-right: 16px;
   margin-bottom: 8px;
   font-family: "Roboto", Helvetica, Arial, "Lucida Grande", sans-serif;
-  color: #2D76EE;
+  color: #005D6D;
   font-size: 15px;
 }
 
@@ -13470,7 +13470,7 @@ a.action-heading [class*=" icon-"] {
 }
 
 .dropdown button .caret {
-  border-color: #2D76EE transparent;
+  border-color: #005D6D transparent;
   margin-bottom: 2px;
 }
 
@@ -13538,10 +13538,10 @@ h6.image-hed {
   padding-bottom: 4px;
   font-size: 16px;
   display: inline-block;
-  border-bottom: 2px solid #2D76EE;
+  border-bottom: 2px solid #005D6D;
   margin-bottom: 0px;
   padding-top: 0;
-  color: #2D76EE;
+  color: #005D6D;
   font-weight: 900;
   font-family: "Roboto", Helvetica, Arial, "Lucida Grande", sans-serif;
   line-height: 1.4;
@@ -13597,7 +13597,7 @@ h6.image-hed {
 }
 
 #minisxs {
-  border-top: 1px solid #2D76EE;
+  border-top: 1px solid #005D6D;
   margin-top: 24px;
   padding: 16px 16px 0;
   padding-bottom: 16px;
@@ -13614,7 +13614,7 @@ h6.image-hed {
 @media only screen and (min-width: 990px) {
   #minisxs {
     padding: 48px 64px 0;
-    border-bottom: 1px solid #2D76EE;
+    border-bottom: 1px solid #005D6D;
   }
 }
 
@@ -13623,7 +13623,7 @@ h6.image-hed {
 }
 
 #minisxs .col-xs-12 {
-  border-bottom: 1px solid #2D76EE;
+  border-bottom: 1px solid #005D6D;
 }
 
 @media only screen and (min-width: 768px) {
@@ -13647,7 +13647,7 @@ h6.image-hed {
 
 p.caption-hero {
   font-family: "Roboto", Helvetica, Arial, "Lucida Grande", sans-serif;
-  color: #2D76EE;
+  color: #005D6D;
   font-weight: 300;
   font-size: 18px;
   padding-bottom: 8px;
@@ -13920,7 +13920,7 @@ h3.section-ah {
   display: inline-block;
   width: 1.2em;
   text-indent: 0;
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 .section-list li a strong {
@@ -14112,7 +14112,7 @@ section .caption a {
   font-family: "Roboto Slab", sans-serif;
   font-size: 20px;
   display: inline-block;
-  border-bottom: 2px solid #2D76EE;
+  border-bottom: 2px solid #005D6D;
   padding-bottom: 4px;
   color: #222;
   font-weight: 400;
@@ -14201,7 +14201,7 @@ section .caption a {
 }
 
 div.row-sxs {
-  border-bottom: 1px solid #2D76EE;
+  border-bottom: 1px solid #005D6D;
   margin-bottom: 0;
   padding-top: 0;
   background-color: #F6F8F1;
@@ -14310,7 +14310,7 @@ img.img-sxs {
     display: block;
     margin: 0;
     padding: 8px 0;
-    border-top: 1px solid #2D76EE;
+    border-top: 1px solid #005D6D;
   }
 }
 
@@ -14324,7 +14324,7 @@ img.img-sxs {
 
 @media only screen and (min-width: 768px) {
   .col-stat + .col-stat {
-    border-left: 1px solid #2D76EE;
+    border-left: 1px solid #005D6D;
   }
 }
 
@@ -14353,7 +14353,7 @@ img.img-sxs {
   font-size: 16px;
   font-weight: 900;
   margin-top: 8px;
-  color: #2D76EE;
+  color: #005D6D;
 }
 
 @keyframes healthy {
@@ -14462,7 +14462,7 @@ section .caption {
 
 @media only screen and (max-width: 767px) {
   .signup-module {
-    border-top: 1px solid #2D76EE;
+    border-top: 1px solid #005D6D;
     padding: 16px 16px 0;
     margin-top: 16px;
   }
@@ -14720,13 +14720,13 @@ section .caption {
 }
 
 #stats .daily-num-container.legend-archives {
-  border: 1px solid #2D76EE;
+  border: 1px solid #005D6D;
   height: 25px;
 }
 
 #stats .daily-num-container.legend-archives .num-value {
   color: white;
-  background-color: #2D76EE;
+  background-color: #005D6D;
 }
 
 #stats .daily-num-container.legend-users {
