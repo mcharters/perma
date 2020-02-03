@@ -5074,7 +5074,7 @@ header .primary-segment {
   padding: 0;
   -ms-flex-order: 4;
   order: 4;
-  width: 50%;
+  width: 100%;
 }
 
 @media only screen and (min-width: 990px) {
