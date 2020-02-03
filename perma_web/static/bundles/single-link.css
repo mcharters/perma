@@ -4483,7 +4483,7 @@ header {
   position: fixed;
   z-index: 99;
   width: 100%;
-  background-color: #2D76EE;
+  background-color: #005D6D;
   color: white;
   overflow: visible;
   font-family: "Roboto", Helvetica, Arial, "Lucida Grande", sans-serif;
@@ -4612,7 +4612,7 @@ header._isPrivate .ui-tray {
 
 .record-message-secondary a:hover,
 .record-message-secondary a:focus {
-  color: #0092FF;
+  color: #005D6D;
 }
 
 .record-message-secondary a:active {
@@ -4732,7 +4732,7 @@ header._isPrivate .ui-tray {
 }
 
 .banner-status .action.new-link:hover {
-  background-color: #0092FF;
+  background-color: #005D6D;
 }
 
 .banner-status .action.new-link:active {
@@ -4857,7 +4857,7 @@ header._isPrivate .ui-tray {
 
 .btn-primary:hover,
 .btn-primary:focus {
-  background-color: #0092FF !important;
+  background-color: #005D6D !important;
   text-decoration: none !important;
   border-color: transparent;
   color: white !important;
@@ -5041,7 +5041,7 @@ header .primary-segment {
 @media only screen and (min-width: 768px) {
   .col._main {
     height: 97px;
-    width: 69%;
+    width: 100%;
     padding-right: 16px;
     border-bottom: 1px solid rgba(254, 254, 254, 0.65);
   }
@@ -5055,13 +5055,13 @@ header .primary-segment {
   .col._main {
     border-left: 1px solid rgba(254, 254, 254, 0.65);
     border-bottom: none;
-    width: 40%;
+    width: 78%;
   }
 }
 
 @media only screen and (min-width: 1200px) {
   .col._main {
-    width: 46%;
+    width: 78%;
     padding-left: 24px;
   }
 }
@@ -5074,7 +5074,7 @@ header .primary-segment {
   padding: 0;
   -ms-flex-order: 4;
   order: 4;
-  width: 50%;
+  width: 100%;
 }
 
 @media only screen and (min-width: 990px) {
@@ -5098,7 +5098,7 @@ a.about {
 }
 
 a.about:hover {
-  border-color: #0092FF;
+  border-color: #005D6D;
 }
 
 a.about:active {
@@ -5220,7 +5220,7 @@ a.about:active {
 }
 
 .creation .action a:hover {
-  border-color: #0092FF;
+  border-color: #005D6D;
   text-decoration: none;
 }
 
@@ -5405,7 +5405,7 @@ li.dropdown {
 .dropdown-inner-list > li > a:focus,
 .dropdown-inner-list > li button:hover,
 .dropdown-inner-list > li button:focus {
-  background-color: #0092FF;
+  background-color: #005D6D;
   color: white;
 }
 
@@ -5533,7 +5533,7 @@ li.dropdown {
 .dropdown-menu > li > a:focus,
 .dropdown-menu > li button:hover,
 .dropdown-menu > li button:focus {
-  background-color: #0092FF;
+  background-color: #005D6D;
   color: white;
 }
 
@@ -5881,7 +5881,7 @@ p.fp a:hover {
 }
 
 .navbar-toggle:hover {
-  background-color: #0092FF;
+  background-color: #005D6D;
   border-radius: 2px;
 }
 
@@ -6198,7 +6198,7 @@ body.modal-open {
 }
 
 #collapse-details .blue-button:hover {
-  background-color: #0092FF;
+  background-color: #005D6D;
 }
 
 #collapse-details .blue-button:hover:disabled {
