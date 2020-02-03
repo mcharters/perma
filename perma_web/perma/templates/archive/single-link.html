@@ -71,9 +71,9 @@
   {% endif %}
 
     <div class="primary-segment row">
-      <div class="col col-sm-4 _main {% if request.user.is_authenticated %}_authenticated{% else %}_unauthenticated{% endif %}">
+      <div class="col col-sm-10 _main {% if request.user.is_authenticated %}_authenticated{% else %}_unauthenticated{% endif %}">
         <div class="content">
-          <p class="title"><span class="_verbose">This is an </span>{% if link.is_private %}Private {% endif %}archived record</p>
+          <p class="title"><span class="_verbose">This is an </span>{% if link.is_private %}Private {% endif %}Archived record</p>
           <p class="creation"><span class="cat">{% if capture.user_upload %}Uploaded{% else %}Captured{% endif %}</span> {{ link.creation_timestamp|local_datetime }}
             {% if serve_type != 'image' %}
               {% if link.screenshot_capture and link.screenshot_capture.status == 'success' %}
