@@ -582,6 +582,8 @@ class CachedLoader(BlockLoader):
 orig_HeaderRewriter_rewrite = HeaderRewriter.rewrite
 def new_rewrite(self, status_headers, urlrewriter, cookie_rewriter):
     result = orig_HeaderRewriter_rewrite(self, status_headers, urlrewriter, cookie_rewriter)
+    if status_headers.get_header('Access-Control-Allow-Origin') != None:
+        result.status_headers.headers.append(('Access-Control-Allow-Origin', status_headers.get_header('Access-Control-Allow-Origin')))
     if status_headers.get_header('Content-Type') == 'application/pdf':
         content_disposition = status_headers.get_header('Content-Disposition')
         if content_disposition and 'attachment' in content_disposition:
