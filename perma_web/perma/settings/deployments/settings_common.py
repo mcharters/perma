@@ -626,3 +626,6 @@ GEOCODING_KEY = None
 AWS_DEFAULT_ACL = 'private'
 
 PERMA_PAYMENTS_TIMESTAMP_MAX_AGE_SECONDS = 120
+
+# Set this to true if you don't want any frontend for your perma install and just want to capture/replay
+API_ONLY = False
