@@ -1,7 +1,7 @@
 from django.conf.urls import handler500, url, include
 from django.conf import settings
 from django.contrib import admin
-from django.views.default import page_not_found
+from django.views.defaults import page_not_found
 
 # Setting our custom route handler so that images are displayed properly
 # Used implicitly by Django
