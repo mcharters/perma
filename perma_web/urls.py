@@ -20,4 +20,5 @@ if settings.API_ONLY:
         url(r'^api/', include('api.urls')), # Our API mirrored for session access
         url(r'^lockss/', page_not_found), # Our app that communicates with the mirror network
         url(r'^', page_not_found), # The Perma app
+        url(r'^$', page_not_found)
     ]
