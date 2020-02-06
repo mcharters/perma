@@ -1,6 +1,7 @@
-from django.conf.urls import handler500, url, include, handler404
+from django.conf.urls import handler500, url, include
 from django.conf import settings
 from django.contrib import admin
+from django.views.default import page_not_found
 
 # Setting our custom route handler so that images are displayed properly
 # Used implicitly by Django
@@ -15,8 +16,8 @@ urlpatterns = [
 
 if settings.API_ONLY:
     urlpatterns = [
-        url(r'^admin/', handler404),  # Django admin
+        url(r'^admin/', page_not_found),  # Django admin
         url(r'^api/', include('api.urls')), # Our API mirrored for session access
-        url(r'^lockss/', handler404), # Our app that communicates with the mirror network
-        url(r'^', handler404), # The Perma app
+        url(r'^lockss/', page_not_found), # Our app that communicates with the mirror network
+        url(r'^', page_not_found), # The Perma app
     ]
