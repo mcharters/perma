@@ -1,4 +1,5 @@
 from django.conf.urls import handler500, url, include
+from django.conf import settings
 from django.contrib import admin
 
 # Setting our custom route handler so that images are displayed properly
@@ -11,3 +12,8 @@ urlpatterns = [
     url(r'^lockss/', include('lockss.urls', namespace='lockss')), # Our app that communicates with the mirror network
     url(r'^', include('perma.urls')), # The Perma app
 ]
+
+if settings.API_ONLY:
+    urlpatterns = [
+        url(r'^api/', include('api.urls')), # Our API mirrored for session access
+    ]
