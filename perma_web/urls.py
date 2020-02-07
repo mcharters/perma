@@ -1,4 +1,4 @@
-from django.conf.urls import handler500, url, include
+from django.conf.urls import handler500, handler404, url, include
 from django.conf import settings
 from django.contrib import admin
 from django.views.defaults import page_not_found
@@ -8,12 +8,10 @@ from django.views.defaults import page_not_found
 handler500 = 'perma.views.error_management.server_error'  # noqa
 
 if settings.API_ONLY:
+    # custom 404 view that doesn't try to redirect to any other page
+    handler404 = 'perma.views.error_management.api_only_404'
     urlpatterns = [
-        #url(r'^admin/', page_not_found),  # Django admin
         url(r'^api/', include('api.urls')), # Our API mirrored for session access
-        #url(r'^lockss/', page_not_found), # Our app that communicates with the mirror network
-        #url(r'^', page_not_found), # The Perma app
-        #url(r'^$', page_not_found)
     ]
 else:
     urlpatterns = [
