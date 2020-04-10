@@ -58,8 +58,3 @@ def server_error(request):
     '''
     return HttpResponseServerError(render(request, '500.html'))
 
-def api_only_404(request):
-    '''
-        Custom view when the API_ONLY mode is turned on
-    '''
-    return render(request, 'api_only_404.html')
