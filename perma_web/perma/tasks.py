@@ -22,6 +22,7 @@ import socket
 from socket import error as socket_error
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
+from celery.signals import task_failure
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException, NoSuchElementException, NoSuchFrameException
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
@@ -31,6 +32,7 @@ import warcprox
 from warcprox.controller import WarcproxController
 from warcprox.warcproxy import WarcProxyHandler
 from warcprox.mitmproxy import ProxyingRecordingHTTPResponse
+from warcprox.mitmproxy import http_client
 import requests
 from requests.structures import CaseInsensitiveDict
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -39,22 +41,23 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 import internetarchive
 
 from django.core.files.storage import default_storage
+from django.core.mail import mail_admins
 from django.template.defaultfilters import truncatechars
 from django.conf import settings
 from django.utils import timezone
-from django.db.models import Q
+from django.urls import reverse
 from django.http import HttpRequest
 
-from perma.models import WeekStats, MinuteStats, Registrar, LinkUser, Link, Organization, CDXLine, Capture, CaptureJob, UncaughtError
+from perma.models import WeekStats, MinuteStats, Registrar, LinkUser, Link, Organization, Capture, CaptureJob, UncaughtError
 from perma.email import send_self_email
 from perma.exceptions import PermaPaymentsCommunicationException
 from perma.utils import (run_task, url_in_allowed_ip_range,
     copy_file_data, preserve_perma_warc, write_warc_records_recorded_from_web,
-    write_resource_record_from_asset)
+    write_resource_record_from_asset, protocol, remove_control_characters)
 from perma import site_scripts
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('celery.django')
 
 ### CONSTANTS ###
 
@@ -66,6 +69,38 @@ AFTER_LOAD_TIMEOUT = 25 # seconds to allow page to keep loading additional resou
 SHUTDOWN_GRACE_PERIOD = settings.SHUTDOWN_GRACE_PERIOD # seconds to allow slow threads to finish before we complete the capture job
 VALID_FAVICON_MIME_TYPES = {'image/png', 'image/gif', 'image/jpg', 'image/jpeg', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/ico'}
 BROWSER_SIZE = [1024, 800]
+
+
+### ERROR REPORTING ###
+
+@task_failure.connect()
+def celery_task_failure_email(**kwargs):
+    """
+    Celery 4.0 onward has no method to send emails on failed tasks
+    so this event handler is intended to replace it. It reports truly failed
+    tasks, just as those terminated after CELERY_TASK_TIME_LIMIT.
+    From https://github.com/celery/celery/issues/3389
+    """
+
+    subject = u"[Django][{queue_name}@{host}] Error: Task {sender.name} ({task_id}): {exception}".format(
+        queue_name=u'celery',
+        host=socket.gethostname(),
+        **kwargs
+    )
+
+    message = u"""Task {sender.name} with id {task_id} raised exception:
+{exception!r}
+
+
+Task was called with args: {args} kwargs: {kwargs}.
+
+The contents of the full traceback was:
+
+{einfo}
+    """.format(
+        **kwargs
+    )
+    mail_admins(subject, message)
 
 
 ### THREAD HELPERS ###
@@ -729,8 +764,8 @@ def teardown(link, thread_list, browser, display, warcprox_controller, warcprox_
         print("Waiting for MitmProxyHandler")
         time.sleep(1)
 
-    if warcprox.controller:
-        warcprox_controller.warc_writer_processor.pool.shutdown() # blocking
+    if warcprox_controller:
+        warcprox_controller.warc_writer_processor.writer_pool.close_writers()  # blocking
 
 
 def process_metadata(metadata, link):
@@ -758,8 +793,9 @@ def save_warc(warcprox_controller, capture_job, link, content_type, screenshot, 
         warcprox_controller.options.directory,
         "{}.warc.gz".format(warcprox_controller.options.warc_filename)
     )
+    warc_size = []  # pass a mutable container to the context manager, so that it can populate it with the size of the finished warc
     with open(recorded_warc_path, 'rb') as recorded_warc_records, \
-         preserve_perma_warc(link.guid, link.creation_timestamp, link.warc_storage_file()) as perma_warc:
+         preserve_perma_warc(link.guid, link.creation_timestamp, link.warc_storage_file(), warc_size) as perma_warc:
         # screenshot first, per Perma custom
         if screenshot:
             write_resource_record_from_asset(screenshot, link.screenshot_capture.url, link.screenshot_capture.content_type, perma_warc)
@@ -768,9 +804,13 @@ def save_warc(warcprox_controller, capture_job, link, content_type, screenshot, 
 
     # update the db to indicate we succeeded
     safe_save_fields(
+        link,
+        warc_size=warc_size[0]
+    )
+    safe_save_fields(
         link.primary_capture,
         status='success',
-        content_type=content_type,
+        content_type=content_type
     )
     if screenshot:
         safe_save_fields(
@@ -778,17 +818,7 @@ def save_warc(warcprox_controller, capture_job, link, content_type, screenshot, 
             status='success'
         )
     save_favicons(link, successful_favicon_urls)
-    safe_save_fields(
-        link,
-        warc_size=default_storage.size(link.warc_storage_file())
-    )
     capture_job.mark_completed()
-
-    try:
-        print("Writing CDX lines to the DB")
-        CDXLine.objects.create_all_from_link(link)
-    except Exception as e:
-        print("Unable to create CDX lines at this time: {}".format(e))
 
 
 def save_favicons(link, successful_favicon_urls):
@@ -810,7 +840,7 @@ def clean_up_failed_captures():
     """
     # use database time with a custom where clause to ensure consistent time across workers
     for capture_job in CaptureJob.objects.filter(status='in_progress').select_related('link').extra(
-            where=["capture_start_time < now() - INTERVAL %s second" % settings.CELERYD_TASK_TIME_LIMIT]
+            where=["capture_start_time < now() - INTERVAL %s second" % settings.CELERY_TASK_TIME_LIMIT]
     ):
         capture_job.mark_failed("Timed out.")
         capture_job.link.captures.filter(status='pending').update(status='failed')
@@ -865,7 +895,7 @@ def run_next_capture():
         start_time = time.time()
         link = capture_job.link
         target_url = link.ascii_safe_url
-        browser = warcprox_controller = warcprox_thread = display = screenshot = None
+        browser = warcprox_controller = warcprox_thread = display = screenshot = content_type = None
         have_content = have_html = False
         thread_list = []
         page_metadata = {}
@@ -948,6 +978,7 @@ def run_next_capture():
                 req += self.rfile.read(int(self.headers['Content-Length']))
 
             prox_rec_res = None
+            start = time.time()
             try:
                 self.logger.debug('sending to remote server req=%r', req)
 
@@ -961,9 +992,14 @@ def run_next_capture():
                         tmp_file_max_memory_size=self._tmp_file_max_memory_size)
                 prox_rec_res.begin(extra_response_headers=extra_response_headers)
 
-                buf = prox_rec_res.read(65536)
+                buf = None
                 while buf != b'':
-                    buf = prox_rec_res.read(65536)
+                    try:
+                        buf = prox_rec_res.read(65536)
+                    except http_client.IncompleteRead as e:
+                        self.logger.warn('%s from %s', e, self.url)
+                        buf = e.partial
+
                     if (self._max_resource_size and
                             prox_rec_res.recorder.len > self._max_resource_size):
                         prox_rec_res.truncated = b'length'
@@ -973,6 +1009,15 @@ def run_next_capture():
                                 'truncating response because max resource size %d '
                                 'bytes exceeded for URL %s',
                                 self._max_resource_size, self.url)
+                        break
+                    elif ('content-length' not in self.headers and
+                           time.time() - start > 3 * 60 * 60):
+                        prox_rec_res.truncated = b'time'
+                        self._remote_server_conn.sock.shutdown(socket.SHUT_RDWR)
+                        self._remote_server_conn.sock.close()
+                        self.logger.info(
+                                'reached hard timeout of 3 hours fetching url '
+                                'without content-length: %s', self.url)
                         break
 
                     # begin Perma changes #
@@ -988,25 +1033,44 @@ def run_next_capture():
                     # end Perma changes #
 
                 self.log_request(prox_rec_res.status, prox_rec_res.recorder.len)
-            except:  # noqa
-                self._remote_server_conn.sock.shutdown(socket.SHUT_RDWR)
-                self._remote_server_conn.sock.close()
+                # Let's close off the remote end. If remote connection is fine,
+                # put it back in the pool to reuse it later.
+                if not is_connection_dropped(self._remote_server_conn):
+                    self._conn_pool._put_conn(self._remote_server_conn)
+
+            except Exception as e:
+                # A common error is to connect to the remote server successfully
+                # but raise a `RemoteDisconnected` exception when trying to begin
+                # downloading. Its caused by prox_rec_res.begin(...) which calls
+                # http_client._read_status(). The connection fails there.
+                # https://github.com/python/cpython/blob/3.7/Lib/http/client.py#L275
+                # Another case is when the connection is fine but the response
+                # status is problematic, raising `BadStatusLine`.
+                # https://github.com/python/cpython/blob/3.7/Lib/http/client.py#L296
+                # In both cases, the host is bad and we must add it to
+                # `bad_hostnames_ports` cache.
+                if isinstance(e, (http_client.RemoteDisconnected,
+                                  http_client.BadStatusLine)):
+                    host_port = self._hostname_port_cache_key()
+                    with self.server.bad_hostnames_ports_lock:
+                        self.server.bad_hostnames_ports[host_port] = 502
+                    self.logger.info('bad_hostnames_ports cache size: %d',
+                                     len(self.server.bad_hostnames_ports))
+
+                # Close the connection only if its still open. If its already
+                # closed, an `OSError` "([Errno 107] Transport endpoint is not
+                # connected)" would be raised.
+                if not is_connection_dropped(self._remote_server_conn):
+                    self._remote_server_conn.sock.shutdown(socket.SHUT_RDWR)
+                    self._remote_server_conn.sock.close()
                 raise
             finally:
-                try:
-                    # Let's close off the remote end. If remote connection is fine,
-                    # put it back in the pool to reuse it later.
-                    if not is_connection_dropped(self._remote_server_conn):
-                        self._conn_pool._put_conn(self._remote_server_conn)
-                except ValueError:
-                    # the connection is already closed
-                    pass
                 if prox_rec_res:
                     prox_rec_res.close()
 
             return req, prox_rec_res
 
-        warcprox.mitmproxy.MitmProxyHandler._proxy_request = stoppable_proxy_request
+        warcprox.mitmproxy.MitmProxyHandler._inner_proxy_request = stoppable_proxy_request
 
 
         def _proxy_request(self):
@@ -1056,7 +1120,7 @@ def run_next_capture():
                     address="127.0.0.1",
                     port=warcprox_port,
                     max_threads=settings.MAX_PROXY_THREADS,
-                    writer_threads=1,
+                    queue_size=settings.MAX_PROXY_QUEUE_SIZE,
                     gzip=True,
                     stats_db_file="",
                     dedup_db_file="",
@@ -1106,7 +1170,8 @@ def run_next_capture():
 
                         have_content = True
                         content_url = str(response.url, 'utf-8')
-                        content_type = getattr(response, 'content_type', '').lower()
+                        content_type = getattr(response, 'content_type', None)
+                        content_type = content_type.lower() if content_type else 'text/html; charset=utf-8'
                         robots_directives = response.parsed_headers.get('x-robots-tag')
                         have_html = content_type and content_type.startswith('text/html')
                         break
@@ -1228,8 +1293,7 @@ def run_next_capture():
     except SoftTimeLimitExceeded:
         capture_job.link.tags.add('timeout-failure')
     except:  # noqa
-        print("Exception while capturing job %s:" % capture_job.link_id)
-        traceback.print_exc()
+        logger.exception(f"Exception while capturing job {capture_job.link_id}:")
     finally:
         try:
             teardown(link, thread_list, browser, display, warcprox_controller, warcprox_thread)
@@ -1250,8 +1314,7 @@ def run_next_capture():
 
 
         except:  # noqa
-            print("Exception while tearing down/saving capture job %s:" % capture_job.link_id)
-            traceback.print_exc()
+            logger.exception(f"Exception while finishing job {capture_job.link_id}:")
         finally:
             capture_job.link.captures.filter(status='pending').update(status='failed')
             if capture_job.status == 'in_progress':
@@ -1308,41 +1371,60 @@ def update_stats():
         current_week.save()
 
 
-@shared_task(bind=True)
-def delete_from_internet_archive(self, link_guid):
+@shared_task(acks_late=True)  # use acks_late for tasks that can be safely re-run if they fail
+def cache_playback_status_for_new_links():
+    links = Link.objects.permanent().filter(cached_can_play_back__isnull=True)
+    queued = 0
+    for link_guid in links.values_list('guid', flat=True).iterator():
+        cache_playback_status.delay(link_guid)
+        queued = queued + 1
+    logger.info(f"Queued {queued} links to have their playback status cached.")
+
+
+@shared_task(acks_late=True)  # use acks_late for tasks that can be safely re-run if they fail
+def cache_playback_status(link_guid):
+    link = Link.objects.get(guid=link_guid)
+    link.cached_can_play_back = link.can_play_back()
+    if link.tracker.has_changed('cached_can_play_back'):
+        link.save(update_fields=['cached_can_play_back'])
+
+
+@shared_task(acks_late=True)  # use acks_late for tasks that can be safely re-run if they fail
+def delete_from_internet_archive(link_guid):
     if not settings.UPLOAD_TO_INTERNET_ARCHIVE:
         return
 
-    identifier = settings.INTERNET_ARCHIVE_IDENTIFIER_PREFIX + link_guid
     link = Link.objects.get(guid=link_guid)
-    item = internetarchive.get_item(identifier)
+    item = internetarchive.get_item(link.ia_identifier)
 
     metadata_identifiers = [
-        "%s_meta.sqlite" % identifier,
-        "%s_meta.xml" % identifier,
-        "%s_files.xml" % identifier
+        f"{link.ia_identifier}_meta.sqlite",
+        f"{link.ia_identifier}_meta.xml",
+        f"{link.ia_identifier}_files.xml"
     ]
 
     if not item.exists:
+        logger.info(f"Link {link.guid} not present in IA: skipping.")
         return False
 
+    link.internet_archive_upload_status = 'deleted'
     for f in item.files:
-        ia_file = item.get_file(f["name"])
-        try:
-            # try to delete all files
-            # if failed, the file might be metadata, auto-created by IA
-            # from https://internetarchive.readthedocs.io/en/latest/api.html#deleting, Note: Some system files, such as <itemname>_meta.xml, cannot be deleted.
-            ia_file.delete(
-                verbose=True,
-                cascade_delete=True,
-                access_key=settings.INTERNET_ARCHIVE_ACCESS_KEY,
-                secret_key=settings.INTERNET_ARCHIVE_SECRET_KEY,
-            )
-        except requests.HTTPError:
-            if f["name"] not in metadata_identifiers:
-                raise Exception("Attempt to delete file %s from Internet Archive failed" % f["name"])
-            else:
-                pass
+        # from https://internetarchive.readthedocs.io/en/latest/api.html#deleting, Note: Some system files, such as <itemname>_meta.xml, cannot be deleted.
+        if f['name'] in metadata_identifiers:
+            logger.info(f"Link {link.guid}: skipping deletion of metadata file {f['name']}.")
+        else:
+            ia_file = item.get_file(f['name'])
+            try:
+                logger.info(f"Link {link.guid}: deleting {f['name']}.")
+                ia_file.delete(
+                    verbose=True,
+                    cascade_delete=True,
+                    access_key=settings.INTERNET_ARCHIVE_ACCESS_KEY,
+                    secret_key=settings.INTERNET_ARCHIVE_SECRET_KEY,
+                )
+            except Exception:
+                link.internet_archive_upload_status = 'deletion_incomplete'
+                logger.exception(f"Link {link.guid}: attempt to delete file {f['name']} from Internet Archive failed:")
 
     metadata = {
         "description": "",
@@ -1355,111 +1437,125 @@ def delete_from_internet_archive(self, link_guid):
         "imagecount": "",
     }
 
-    item.modify_metadata(
-        metadata,
-        access_key=settings.INTERNET_ARCHIVE_ACCESS_KEY,
-        secret_key=settings.INTERNET_ARCHIVE_SECRET_KEY,
-    )
+    logger.info(f"Link {link.guid}: zeroing out metadata.")
+    try:
+        item.modify_metadata(
+            metadata,
+            access_key=settings.INTERNET_ARCHIVE_ACCESS_KEY,
+            secret_key=settings.INTERNET_ARCHIVE_SECRET_KEY,
+        )
+    except Exception:
+        link.internet_archive_upload_status = 'deletion_incomplete'
+        logger.exception(f"Link {link.guid}: attempt to zero out metadata on Internet Archive failed:")
 
-    link.internet_archive_upload_status = 'deleted'
-    link.save()
-
-@shared_task()
-def upload_all_to_internet_archive():
-    # find all links created 48-24 hours ago
-    # include timezone
-    start_date = timezone.now() - timedelta(days=2)
-    end_date = timezone.now() - timedelta(days=1)
-
-    links = Link.objects.filter(
-        Q(internet_archive_upload_status='not_started') | Q(internet_archive_upload_status='failed'),
-        creation_timestamp__range=(start_date, end_date))
-    for link in links:
-        if link.can_upload_to_internet_archive():
-            run_task(upload_to_internet_archive.s(link_guid=link.guid))
+    link.save(update_fields=['internet_archive_upload_status'])
 
 
-@shared_task(bind=True)
-def upload_to_internet_archive(self, link_guid):
+@shared_task(acks_late=True)  # use acks_late for tasks that can be safely re-run if they fail
+def delete_all_from_internet_archive(guids=None, limit=None):
     if not settings.UPLOAD_TO_INTERNET_ARCHIVE:
         return
 
-    try:
-        link = Link.objects.get(guid=link_guid)
+    if guids:
+        links = Link.objects.filter(guid__in=guids)
+    else:
+        links = Link.objects.filter(internet_archive_upload_status__in=['deletion_required', 'deletion_incomplete'])
+    if limit:
+        links = links[:limit]
+    queued = 0
+    for link_guid in links.values_list('guid', flat=True).iterator():
+        delete_from_internet_archive.delay(link_guid)
+        queued = queued + 1
+    logger.info(f"Queued {queued} links for deletion from IA.")
 
-        if link.internet_archive_upload_status == 'failed_permanently':
-            return
 
-    except Link.DoesNotExist:
-        print("Link %s does not exist" % link_guid)
+@shared_task(acks_late=True)  # use acks_late for tasks that can be safely re-run if they fail
+def upload_all_to_internet_archive(limit=None):
+    if not settings.UPLOAD_TO_INTERNET_ARCHIVE:
         return
 
+    links = Link.objects.visible_to_ia().filter(
+        internet_archive_upload_status__in=['not_started', 'failed', 'upload_or_reupload_required', 'deleted']
+    )
+    if limit:
+        links = links[:limit]
+    queued = 0
+    for link_guid in links.values_list('guid', flat=True).iterator():
+        upload_to_internet_archive.delay(link_guid)
+        queued = queued + 1
+    logger.info(f"Queued {queued} links for upload to IA.")
+
+
+@shared_task()
+def upload_to_internet_archive(link_guid):
+    """
+    Call synchronously from the Django shell with the invocation:
+    >>> upload_to_internet_archive.apply(kwargs={"link_guid": 'AAAA-AAAA'})
+    """
+
+    if not settings.UPLOAD_TO_INTERNET_ARCHIVE:
+        return
+
+    link = Link.objects.get(guid=link_guid)
     if not link.can_upload_to_internet_archive():
-        print("Link %s Not eligible for upload." % link_guid)
+        logger.info(f"Queued Link {link_guid} no longer eligible for upload.")
         return
 
+    url = remove_control_characters(link.submitted_url)
     metadata = {
         "collection": settings.INTERNET_ARCHIVE_COLLECTION,
-        "title": '%s: %s' % (link_guid, truncatechars(link.submitted_title, 50)),
-        "mediatype": 'web',
-        "description": 'Perma.cc archive of %s created on %s.' % (link.submitted_url, link.creation_timestamp,),
-        "contributor": 'Perma.cc',
-        "submitted_url": link.submitted_url,
-        "perma_url": "http://%s/%s" % (settings.HOST, link_guid),
-        "external-identifier": 'urn:X-perma:%s' % link_guid,
+        "title": f"{link_guid}: {truncatechars(link.submitted_title, 50)}",
+        "mediatype": "web",
+        "description": f"Perma.cc archive of {url} created on {link.creation_timestamp}.",
+        "contributor": "Perma.cc",
+        "submitted_url": url,
+        "perma_url": protocol() + settings.HOST + reverse('single_permalink', args=[link.guid]),
+        "external-identifier": f"urn:X-perma:{link_guid}",
     }
 
-    identifier = settings.INTERNET_ARCHIVE_IDENTIFIER_PREFIX + link_guid
+    temp_warc_file = tempfile.TemporaryFile()
     try:
-        if default_storage.exists(link.warc_storage_file()):
-            item = internetarchive.get_item(identifier)
+        item = internetarchive.get_item(link.ia_identifier)
+        if item.exists:
+            if not item.metadata.get('title') or item.metadata['title'] == 'Removed':
+                # if item already exists (but has been removed),
+                # ia won't update its metadata when we attempt to re-upload:
+                # we have to explicitly modify the metadata, then upload.
+                logger.info(f"Link {link_guid} previously removed from IA: updating metadata")
+                item.modify_metadata(
+                    metadata,
+                    access_key=settings.INTERNET_ARCHIVE_ACCESS_KEY,
+                    secret_key=settings.INTERNET_ARCHIVE_SECRET_KEY,
+                )
+            else:
+                logger.info(f"Link {link_guid} was already uploaded to IA: skipping.")
+                return
 
-            # if item already exists (but has been removed),
-            # ia won't update its metadata in upload function
-            if item.exists and item.metadata['title'] == 'Removed':
-                item.modify_metadata(metadata,
-                                     access_key=settings.INTERNET_ARCHIVE_ACCESS_KEY,
-                                     secret_key=settings.INTERNET_ARCHIVE_SECRET_KEY,
-                                     )
-
-            warc_name = os.path.basename(link.warc_storage_file())
-
-            # copy warc to local disk storage for upload
-            temp_warc_file = tempfile.TemporaryFile()
-            copy_file_data(default_storage.open(link.warc_storage_file()), temp_warc_file)
+        # copy warc to local disk storage for upload
+        with default_storage.open(link.warc_storage_file()) as warc_file:
+            copy_file_data(warc_file, temp_warc_file)
             temp_warc_file.seek(0)
 
-            success = internetarchive.upload(
-                identifier,
-                {warc_name: temp_warc_file},
-                metadata=metadata,
-                access_key=settings.INTERNET_ARCHIVE_ACCESS_KEY,
-                secret_key=settings.INTERNET_ARCHIVE_SECRET_KEY,
-                retries=10,
-                retries_sleep=60,
-                verbose=True,
-            )
-
-            if success:
-                link.internet_archive_upload_status = 'completed'
-                link.save()
-
-            else:
-                link.internet_archive_upload_status = 'failed'
-                self.retry(exc=Exception("Internet Archive reported upload failure."))
-
-            return
-        else:
-            link.internet_archive_upload_status = 'failed_permanently'
-            link.save()
-
-    except requests.ConnectionError as e:
-        logger.exception("Upload to Internet Archive task failed because of a connection error. \nLink GUID: %s\nError: %s" % (link.pk, e))
-        return
-
-    except SoftTimeLimitExceeded as e:
-        logger.exception("Upload to Internet Archive task failed because soft time limit was exceeded. \nLink GUID: %s\nError: %s" % (link.pk, e))
-        return
+        logger.info(f"Uploading Link {link_guid} to IA.")
+        warc_name = os.path.basename(link.warc_storage_file())
+        response_list = internetarchive.upload(
+            link.ia_identifier,
+            {warc_name: temp_warc_file},
+            metadata=metadata,
+            access_key=settings.INTERNET_ARCHIVE_ACCESS_KEY,
+            secret_key=settings.INTERNET_ARCHIVE_SECRET_KEY,
+            retries=2,
+            retries_sleep=5,
+            verbose=True,
+        )
+        response_list[0].raise_for_status()
+        link.internet_archive_upload_status = 'completed'
+    except Exception:
+        logger.exception(f"Exception while uploading Link {link.guid} to IA:")
+        link.internet_archive_upload_status = 'failed'
+    finally:
+        temp_warc_file.close()
+        link.save(update_fields=['internet_archive_upload_status'])
 
 
 @shared_task()
@@ -1509,3 +1605,32 @@ def sync_subscriptions_from_perma_payments():
         except PermaPaymentsCommunicationException:
             # This gets logged inside get_subscription; don't duplicate logging here
             pass
+
+
+@shared_task(acks_late=True)
+def populate_warc_size_fields(limit=None):
+    """
+    One-time task, to populate the warc_size field for links where we missed it, the first time around.
+    See https://github.com/harvard-lil/perma/issues/2617 and https://github.com/harvard-lil/perma/issues/2172;
+    old links also often lack this metadata.
+    """
+    links = Link.objects.filter(warc_size__isnull=True, cached_can_play_back=True)
+    if limit:
+        links = links[:limit]
+    queued = 0
+    for link_guid in links.values_list('guid', flat=True).iterator():
+        populate_warc_size.delay(link_guid)
+        queued = queued + 1
+    logger.info(f"Queued {queued} links for populating warc_size.")
+
+
+@shared_task(acks_late=True)
+def populate_warc_size(link_guid):
+    """
+    One-time task, to populate the warc_size field for links where we missed it, the first time around.
+    See https://github.com/harvard-lil/perma/issues/2617 and https://github.com/harvard-lil/perma/issues/2172;
+    old links also often lack this metadata.
+    """
+    link = Link.objects.get(guid=link_guid)
+    link.warc_size = default_storage.size(link.warc_storage_file())
+    link.save(update_fields=['warc_size'])

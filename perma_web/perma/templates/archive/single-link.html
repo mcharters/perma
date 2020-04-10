@@ -103,6 +103,111 @@
           <span>View the live page</span></a>
         </div>
       </div>
+      <div class="col col-sm-2 _user {% if request.user.is_authenticated %}_authenticated{% else %}_unauthenticated{% endif %}">
+        <div class="content">
+          {% if request.user.is_authenticated %}
+            {% include 'includes/upper_right_menu.html' %}
+          {% else %}
+            <a class="about" href="{% url 'about' %}" target="_blank">What is Perma.cc?</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div id="collapse-details" class="details-segment ui-tray row collapse">
+      <div class="tray-details">
+        <div class="tray-detail-group">
+          <label class="tray-detail-title" for="source_url">Source page URL {% if capture.user_upload %}(unverified){% endif %}</label>
+          <input id="source_url" class="tray-detail-entry" value="{{link.submitted_url}}" readonly>
+        </div>
+
+        {% if can_edit %}
+          <div class="tray-detail-group">
+            <label for="submitted_title" class="tray-detail-title">Title <span class="label-instruction _verbose">&nbsp;</span><span class="save-status"></span></label>
+            <input id="submitted_title" name="title" class="form-control link-submitted-title" value="{{link.submitted_title}}">
+          </div>
+          <div class="tray-detail-group">
+            <label for="submitted_description" class="tray-detail-title">Description<span class="save-status"></span></label>
+            <input id="submitted_description" name="description" class="form-control link-submitted-description" value="{{link.submitted_description}}"/>
+          </div>
+          <div class="tray-detail-group">
+            <label for="notes" class="tray-detail-title">Notes <span class="label-instruction _verbose"> (only visible to you{% if link.organization%} and your organization{% endif %})</span><span class="save-status"></span></label>
+            <input id="notes" name="notes" class="form-control link-notes"  value="{{link.notes}}"/>
+          </div>
+          {% if can_delete  and not link.capture_job.status == 'in_progress' %}
+            <div class="tray-detail-group temporary-options">
+              <form id="archive_upload_form">
+                <label class="tray-detail-title">Upload file<span class="label-asterisk">*</span> <span class="label-instruction _verbose" style="display:block;"> This will replace the existing capture. GIF, JPG, PDF, and PNG up to {{max_size}} MB are allowed.</span></label>
+                <input class="col-sm-10 file" name="file" type="file"  accept=".png,.jpg,.jpeg,.gif,.pdf">
+                <span class="btn-file-upload-container">
+                  <button id="updatePermalink" type="submit" class="blue-button btn-sm btn-file-upload">Upload</button>
+                  <button id="cancelUpdatePermalink" type="reset" class="btn-sm btn-file-upload">Cancel</button>
+                </span>
+              </form>
+            </div>
+            <div class="tray-detail-group temporary-options">
+              <div class="tray-detail-title">
+                <a class="btn-delete btn-sm"
+                  href="{% url 'user_delete_link' link.guid %}">
+                  Delete<span class="_verbose"> record</span>
+                </a>
+                <span class="label-asterisk">*</span>
+              </div>
+                <div class="label-instruction pull-right temporary-instructions">
+                  <span class="label-asterisk">*</span> These options are only available for the first twenty-four hours.
+                </div>
+            </div>
+          {% endif %}
+        {% else %}
+          <div class="tray-detail-group">
+            <dt class="tray-detail-title">Title</dt>
+            <dd class="tray-detail-entry">{{link.submitted_title}}</dd>
+          </div>
+          <div class="tray-detail-group">
+            <dt class="tray-detail-title">Description</dt>
+            <dd class="tray-detail-entry">{{link.submitted_description}}</dd>
+          </div>
+        {% endif %}
+        {% comment %}
+          {% if link.organization %}
+            <dl class="tray-detail-group">
+              <dt class="tray-detail-title">Archiving Organization</dt>
+              <dd class="tray-detail-entry">{{ link.organization }}</dd>
+            </dl>
+          {% endif %}
+        {% endcomment %}
+      </div>
+      <div class="tray-actions col-xs-12">
+        {% if link.can_play_back %}
+          <a href="{% url 'single_permalink' guid=link.guid %}?type=warc_download" role="button" class="btn btn-ui-small btn-dashboard" title="download">Download Archive</a>
+        {% endif %}
+        {% if not can_edit %}
+          <a href="{% url 'contact' %}?flag={{link.guid}}" role="button" class="btn btn-ui-small btn-dashboard flag" title="Flag as inappropriate">Flag<span class="_verbose"> as inappropriate</span></a>
+        {% endif %}
+        {# user edit buttons #}
+        {% if can_toggle_private %}
+          <button class="btn btn-ui-small btn-dashboard darchive"><span class="_verbose">Mark as </span>{% if link.is_private %}Public{% else %}Private{% endif %}</button>
+          {% if request.user.is_staff %}
+            {% if link.is_private %}
+              (Private reason: {{ link.get_private_reason_display }})
+            {% else %}
+              <select name="private_reason">
+                <option value="user"> At user direction</option>
+                <option value="policy"> Perma-specific robots.txt or noarchive meta tag</option>
+                <option value="old_policy"> Generic robots.txt or noarchive meta tag (old policy)</option>
+                <option value="takedown"> At content owner's request</option>
+              </select>
+            {% endif %}
+          {% endif %}
+        {% endif %}
+      </div>
+
+      {# In IE, our tray shows behind iframes containing PDFs. Adding a blank iframe at z-index -1 fixes the problem. Via https://stackoverflow.com/a/12977151/307769 #}
+      <script type="text/javascript">
+        if(/MSIE \d|Trident.*rv:/.test(navigator.userAgent)) // only add this useless iframe in IE: https://stackoverflow.com/a/29988202/307769
+            document.write('<iframe src="about:blank" style="border: none;position: absolute;top: 0;left: 0;height: 100%;width: 100%;z-index: -1;"></iframe><![endif]-->');
+      </script>
+
     </div>
   </header>
 

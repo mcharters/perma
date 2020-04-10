@@ -12,21 +12,23 @@ MEDIA_ROOT = 'perma/assets/generated/'
 
 # Schedule celerybeat jobs.
 # These will be added to CELERYBEAT_SCHEDULE in settings.utils.post_processing
-CELERYBEAT_JOB_NAMES = [
+CELERY_BEAT_JOB_NAMES = [
     'update-stats',
-    'send-links-to-internet-archives',
+    'send-links-to-internet-archive',
+    'delete-links-from-internet-archive',
     'send-js-errors',
     'run-next-capture',
-    'sync_subscriptions_from_perma_payments'
-    ]
+    'verify_webrecorder_api_available',
+    'sync_subscriptions_from_perma_payments',
+    'cache_playback_status_for_new_links',
+]
 
 # logging
-LOGGING['handlers']['default']['filename'] = '/var/log/perma/perma.log'
+LOGGING['handlers']['file']['filename'] = '/var/log/perma/perma.log'
 PHANTOMJS_LOG = '/var/log/perma/phantom.log'
 
 # use separate subdomain for user content
 MEDIA_URL = '//perma-archives.org/media/'
-PLAYBACK_HOST = 'perma-archives.org'
 
 # Our sorl thumbnail settings
 # We only use this redis config in prod. dev envs use the local db.
@@ -35,7 +37,6 @@ THUMBNAIL_REDIS_HOST = 'localhost'
 THUMBNAIL_REDIS_PORT = '6379'
 
 # caching
-# in dev, Django will use the default in-memory cache
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",

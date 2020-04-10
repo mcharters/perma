@@ -24,6 +24,8 @@ from webrecorder.models.stats import Stats
 # BEGIN PERMA CUSTOMIZATION
 #
 
+import time
+
 # https://github.com/webrecorder/warcio/blob/master/warcio/statusandheaders.py#L16
 ENCODE_HEADER_RX = re.compile(r'[=]["\']?([^;"]+)["\']?(?=[;]?)')
 
@@ -83,6 +85,9 @@ class ContentController(BaseController, RewriterApp):
         # URLs or domains. This is a temporary workaround, until we devise
         # a more universally satisfactory solution.
         self.refuse_playback = [url for url in os.environ.get('REFUSE_PLAYBACK', '').split(',') if url]
+        # We are experiencing unexpected, transient 404s that resolve on refrsh.
+        # This is a temporary workaround/diagnostic experiment.
+        self.sleep_on_404 = int(os.environ.get('SLEEP_ON_404', '2'))
         # END PERMA CUSTOMIZATION
 
     def _init_client_archive_info(self):
@@ -800,7 +805,19 @@ class ContentController(BaseController, RewriterApp):
 
             request.environ['pywb.static_prefix'] = self.BUNDLE_PREFIX
 
-            resp = self.render_content(wb_url, kwargs, request.environ)
+            # BEGIN PERMA CUSTOMIZATIONS
+            try:
+                resp = self.render_content(wb_url, kwargs, request.environ)
+            except UpstreamException as ue:
+                if ue.status_code == 404:
+                    # Retry all 404s after 1s, in a broad effort to allay
+                    # https://github.com/harvard-lil/perma/issues/2633
+                    # until I pinpoint the real problem.
+                    time.sleep(self.sleep_on_404)
+                    resp = self.render_content(wb_url, kwargs, request.environ)
+                else:
+                    raise
+            # END PERMA CUSTOMIZATIONS
 
             if frontend_cache_header:
                 resp.status_headers.headers.append(frontend_cache_header)

@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.test import TestCase
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 
 from perma.models import LinkUser
 
@@ -59,7 +59,7 @@ class PermaTestCase(TestCase):
         url = reverse(view_name, *reverse_args, **reverse_kwargs)
         if query_params:
             url += '?' + urlencode(query_params)
-        resp = getattr(self.client, method.lower())(bytes(url, 'utf-8'), *request_args, **request_kwargs)
+        resp = getattr(self.client, method.lower())(url, *request_args, **request_kwargs)
         if require_status_code:
             self.assertEqual(resp.status_code, require_status_code)
         return resp
@@ -131,3 +131,10 @@ class PermaTestCase(TestCase):
 
         return resp
 
+
+
+# from https://github.com/jamesls/fakeredis/issues/234
+from django_redis.pool import ConnectionFactory
+class FakeConnectionFactory(ConnectionFactory):
+    def get_connection(self, params):
+        return self.redis_client_cls(**self.redis_client_cls_kwargs)

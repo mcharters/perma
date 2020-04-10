@@ -31,7 +31,7 @@ def run_django(port="0.0.0.0:8000", use_ssl=False, cert_file='perma-test.crt', h
     if settings.RUN_TASKS_ASYNC:
         print("Starting background celery process. Warning: this has a documented memory leak, and developing with"
               " RUN_TASKS_ASYNC=False is usually easier unless you're specifically testing a Django-Celery interaction.")
-        commands.append('celery -A perma worker --loglevel=info -B -n w1@%h')
+        commands.append('celery -A perma worker --loglevel=info -Q celery,background,ia -B -n w1@%h')
 
     # Only run the webpack background process in debug mode -- with debug False, dev server uses static assets,
     # and running webpack just messes up the webpack stats file.
@@ -168,7 +168,6 @@ def logs(log_dir=os.path.join(settings.PROJECT_ROOT, '../services/logs/')):
 @task
 def create_db(host='db', user='root', password='password'):
     local("mysql -h {} -u{} -p{} -e 'create database perma character set utf8;'".format(host, user, password))
-    local("mysql -h {} -u{} -p{} -e 'create database perma_cdxline character set utf8;'".format(host, user, password))
 
 
 @task
@@ -177,7 +176,6 @@ def init_db():
         Run syncdb, apply migrations, and import fixtures for new dev database.
     """
     local("python manage.py migrate")
-    local("python manage.py migrate --database=perma-cdxline")
     local("python manage.py loaddata fixtures/sites.json fixtures/users.json fixtures/folders.json")
 
 
@@ -956,3 +954,44 @@ def clear_wr_session_for_user(target_email):
                 print("Cleared session for user {} ({})".format(target_user_id, target_email))
         except KeyError:
             pass
+
+
+@task
+def populate_link_surt_column(batch_size="500", model='Link'):
+    import logging
+    from tqdm import tqdm
+    import surt
+    from perma.models import Link, HistoricalLink
+
+    logger = logging.getLogger(__name__)
+
+    logger.info("BEGIN: populate_link_surt_column")
+
+    models = {'Link': Link, 'HistoricalLink': HistoricalLink}
+    links = models[model].objects.filter(submitted_url_surt__isnull=True)
+
+    # limit to our desired batch size
+    not_populated = links.count()
+    batch_size = int(batch_size)
+    if not_populated > batch_size:
+        logger.info(f"{not_populated} links to update: limiting to first {batch_size}")
+        links = links[:batch_size]
+
+    to_update = links.count()
+    if not to_update:
+        logger.info("No links to update.")
+        return
+
+    for link in tqdm(links):
+        link.submitted_url_surt = surt.surt(link.submitted_url)
+        link.save()
+
+    # offer to send another batch if there are any links left to update
+    remaining_to_update = not_populated - to_update
+    if remaining_to_update:
+        if input(f"\nSend another batch of size {batch_size}? [y/n]\n").lower() == 'y':
+            populate_link_surt_column(batch_size=str(batch_size), model=model)
+        else:
+            logger.info(f"Stopped with ~ {remaining_to_update} remaining {model}s to update")
+    else:
+        logger.info(f"No more {model}s left to update!")

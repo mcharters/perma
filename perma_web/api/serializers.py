@@ -131,7 +131,7 @@ class CaptureJobSerializer(BaseSerializer):
 class CaptureSerializer(BaseSerializer):
     class Meta:
         model = Capture
-        fields = ('role', 'status', 'url', 'record_type', 'content_type', 'user_upload', 'playback_url')
+        fields = ('role', 'status', 'url', 'record_type', 'content_type', 'user_upload')
 
 
 ### LINK ###
@@ -256,7 +256,7 @@ class AuthenticatedLinkSerializer(LinkSerializer):
             errors['file'] = "File cannot be blank."
         elif uploaded_file:
 
-            if self.instance and self.instance.is_archive_eligible():
+            if self.instance and self.instance.is_permanent():
                 errors['file'] = "Archive contents cannot be replaced after 24 hours"
 
             else:

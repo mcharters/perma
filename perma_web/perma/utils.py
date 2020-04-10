@@ -16,9 +16,11 @@ import os
 import requests
 import socket
 import string
+import surt
 import tempdir
 import tempfile
 from ua_parser import user_agent_parser
+import unicodedata
 from urllib.parse import urlparse
 from warcio.warcwriter import BufferWARCWriter
 from wsgiref.util import FileWrapper
@@ -27,6 +29,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.urls import reverse
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponseForbidden, Http404, StreamingHttpResponse
 from django.utils.decorators import available_attrs
@@ -36,7 +39,6 @@ from django.utils import timezone
 from django.views.decorators.debug import sensitive_variables
 
 from .exceptions import InvalidTransmissionException, WebrecorderException
-
 
 logger = logging.getLogger(__name__)
 warn = logger.warn
@@ -312,6 +314,67 @@ def redirect_to_download(capture_mime_type, user_agent_str):
 def protocol():
     return "https://" if settings.SECURE_SSL_REDIRECT else "http://"
 
+### memento
+
+def url_with_qs_and_hash(url, qs_and_hash=None):
+    if qs_and_hash:
+        url = f"{url}?{qs_and_hash}"
+    return url
+
+def url_split(url):
+    """ Separate into base and query + hash"""
+    return url.split('?', 1)
+
+def timemap_url(request, url, response_format):
+    base, *qs_and_hash = url_split(url)
+    return url_with_qs_and_hash(
+        request.build_absolute_uri(reverse('timemap', args=[response_format, base])),
+        qs_and_hash[0] if qs_and_hash else ''
+    )
+
+def timegate_url(request, url):
+    base, *qs_and_hash = url_split(url)
+    return url_with_qs_and_hash(
+        request.build_absolute_uri(reverse('timegate', args=[base])),
+        qs_and_hash[0] if qs_and_hash else ''
+    )
+
+def memento_url(request, link):
+    return request.build_absolute_uri(reverse('single_permalink', args=[link.guid]))
+
+def memento_data_for_url(request, url, qs=None, hash=None):
+    from perma.models import Link  #noqa
+    try:
+        canonicalized = surt.surt(url)
+    except ValueError:
+        return {}
+    mementos = [
+        {
+            'uri': memento_url(request, link),
+            'datetime': link.creation_timestamp,
+        } for link in Link.objects.visible_to_memento().filter(submitted_url_surt=canonicalized).order_by('creation_timestamp')
+    ]
+    if not mementos:
+        return {}
+    return {
+        'self': request.build_absolute_uri(),
+        'original_uri': url,
+        'timegate_uri': timegate_url(request, url),
+        'timemap_uri': {
+            'json_format': timemap_url(request, url, 'json'),
+            'link_format': timemap_url(request, url, 'link'),
+            'html_format': timemap_url(request, url, 'html'),
+        },
+        'mementos': {
+            'first': mementos[0],
+            'last': mementos[-1],
+            'list': mementos,
+        }
+    }
+
+
+def remove_control_characters(s):
+    return "".join(ch for ch in s if unicodedata.category(ch)[0]!="C")
 
 ### perma payments
 
@@ -429,7 +492,7 @@ def decrypt_from_perma_payments(ciphertext, encoder=encoding.Base64Encoder):
 #
 
 @contextmanager
-def preserve_perma_warc(guid, timestamp, destination):
+def preserve_perma_warc(guid, timestamp, destination, warc_size):
     """
     Context manager for opening a perma warc, ready to receive warc records.
     Safely closes and saves the file to storage when context is exited.
@@ -441,6 +504,7 @@ def preserve_perma_warc(guid, timestamp, destination):
         yield out
     finally:
         out.flush()
+        warc_size.append(out.tell())
         out.seek(0)
         default_storage.store_file(out, destination, overwrite=True)
         out.close()
@@ -549,7 +613,7 @@ def stream_warc(link):
     # it's easy to forget that deleted links/warcs aren't truly deleted,
     # and easy to accidentally permit the downloading of "deleted" warcs.
     # Users of stream_warc shouldn't have to worry about / remember this.
-    if link.user_deleted:
+    if link.user_deleted or not link.can_play_back():
         raise Http404
     return get_warc_stream(link)
 

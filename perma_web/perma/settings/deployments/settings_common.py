@@ -1,19 +1,12 @@
 # Core settings used by all deployments.
 import os, sys
+from copy import deepcopy
 
 # PROJECT_ROOT is the absolute path to the perma_web folder
 # We determine this robustly thanks to http://stackoverflow.com/a/2632297
 this_module = sys.executable if hasattr(sys, "frozen") else __file__
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(this_module))))
 SERVICES_DIR = os.path.abspath(os.path.join(PROJECT_ROOT, '../services'))
-
-# make sure mysql uses innodb and utf8
-_mysql_connection_options = {
-    "init_command": "SET default_storage_engine=INNODB; SET NAMES 'utf8';",
-    # for mysql 5.7+, use:
-    # "init_command": "SET default_storage_engine=INNODB; SET NAMES 'utf8';",
-    "charset": "utf8",
-}
 
 DATABASES = {
     'default': {
@@ -23,29 +16,16 @@ DATABASES = {
         'PASSWORD': 'perma',
         'HOST': '',                      # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
         'PORT': '3306',                      # Set to empty string for default.
-        'OPTIONS': _mysql_connection_options
-
-    },
-    'perma-cdxline': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'perma_cdxline',
-        'USER': 'perma',
-        'PASSWORD': 'perma',
-        'HOST': '',
-        'PORT': '3306',
-        'OPTIONS': _mysql_connection_options
+        'OPTIONS': {
+            "init_command": "SET default_storage_engine=INNODB; SET NAMES 'utf8';",
+            "charset": "utf8",
+        }
     },
 }
 if os.environ.get('DOCKERIZED'):
     DATABASES['default']['USER'] = 'root'
     DATABASES['default']['PASSWORD'] = 'password'
     DATABASES['default']['HOST'] = 'db'
-    DATABASES['perma-cdxline']['USER'] = 'root'
-    DATABASES['perma-cdxline']['PASSWORD'] = 'password'
-    DATABASES['perma-cdxline']['HOST'] = 'db'
-
-# https://docs.djangoproject.com/en/1.9/topics/db/multi-db/#using-routers
-DATABASE_ROUTERS = ['perma.cdx_router.CDXRouter']
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -78,15 +58,9 @@ MEDIA_URL = '/media/'
 STATIC_ROOT = os.path.join(PROJECT_ROOT, 'static-collected')                # where to store collected static files
 STATIC_URL = '/static/'         # URL to serve static files
 
-def _pywb_static_dir_location():
-    # helper to return absolute path of pywb's static directory
-    import pywb
-    return os.path.join(os.path.dirname(pywb.__file__), 'static')
-
 # where to look for static files (in addition to app/static/)
 STATICFILES_DIRS = (
     os.path.join(PROJECT_ROOT, 'static'),
-    ('pywb', _pywb_static_dir_location())  # include pywb's static files at /static/pywb
 )
 
 STATICFILES_FINDERS = (         # how to look for static files
@@ -154,7 +128,6 @@ ROOT_URLCONF = 'urls'
 
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'perma.wsgi.application'
-
 
 
 INSTALLED_APPS = (
@@ -287,74 +260,80 @@ LOGIN_MINUTE_LIMIT = '5000/m'
 LOGIN_HOUR_LIMIT = '10000/h'
 LOGIN_DAY_LIMIT = '50000/d'
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
 # Cache-Control max-age settings
 CACHE_MAX_AGES = {
     'single_permalink' : 60 * 60,     # 1hr
-    'timegate'     : 0,     # 1hr
-    'timemap'      : 60 * 30,     # 30mins
-    'memento'      : 60 * 60 * 4, # 4hrs
+    'timegate'     : 0,
+    'timemap'      : 60 * 30,         # 30mins
 }
 
 # Dashboard user lists
 MAX_USER_LIST_SIZE = 50
 
-# A sample logging configuration. The only tangible logging
-# performed by this configuration is to send an email to
-# the site admins on every HTTP 500 error.
-# See http://docs.djangoproject.com/en/dev/topics/logging for
-# more details on how to customize your logging configuration.
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'standard': {
-            'format': '%(asctime)s [%(levelname)s] %(filename)s %(lineno)d: %(message)s'
-        },
+from django.utils.log import DEFAULT_LOGGING
+LOGGING = deepcopy(DEFAULT_LOGGING)
+LOGGING['handlers'] = {
+    **LOGGING['handlers'],
+    # log everything to console on both dev and prod
+    'console': {
+        'level': 'DEBUG',
+        'class': 'logging.StreamHandler',
+        'formatter': 'standard',
     },
-    'filters': {
-         'require_debug_false': {
-             '()': 'django.utils.log.RequireDebugFalse'
-         }
-     },
-    'handlers': {
-        'default': {
-            'level':'INFO',
-            'filters': ['require_debug_false'],
-            'class':'logging.handlers.RotatingFileHandler',
-            'filename': '/tmp/perma.log',
-            'maxBytes': 1024*1024*5, # 5 MB
-            'backupCount': 5,
-            'formatter':'standard',
-        },
-        'mail_admins': {
-            'level': 'ERROR',
-            'filters': ['require_debug_false'],
-            'class': 'perma.reporter.CustomAdminEmailHandler'
-        },
+    # custom error email template
+    'mail_admins': {
+        'level': 'ERROR',
+        'filters': ['require_debug_false'],
+        'class': 'perma.reporter.CustomAdminEmailHandler'
     },
-    'loggers': {
-        '': {
-            'handlers': ['default', 'mail_admins'],
-            'level': 'DEBUG',
-            'propagate': True
-        },
-        'django.request': {
-            'handlers': ['mail_admins'],
-            'level': 'ERROR',
-            'propagate': False,
-        },
-        'warcprox': {
-            'level': 'CRITICAL'
-        },
-        'requests' : {
-            'level': 'WARNING'
-        }
-    }
+    # log to file
+    'file': {
+        'level':'INFO',
+        'class':'logging.handlers.RotatingFileHandler',
+        'filename': '/tmp/perma.log',
+        'maxBytes': 1024*1024*5, # 5 MB
+        'backupCount': 5,
+        'formatter':'standard',
+    },
 }
-LOG_PLAYBACK_404 = False
-
-# URLS we should not allow to play back
-REFUSE_PLAYBACK = []
+LOGGING['loggers'] = {
+    **LOGGING['loggers'],
+    # only show warnings for third-party apps
+    '': {
+        'level': 'WARNING',
+        'handlers': ['console', 'mail_admins', 'file'],
+    },
+    # disable django's built-in handlers to avoid double emails
+    'django': {
+        'level': 'WARNING'
+    },
+    'django.request': {
+        'level': 'ERROR'
+    },
+    'warcprox': {
+        'level': 'CRITICAL'
+    },
+    'celery.django': {
+        'level': 'INFO',
+        'handlers': ['console', 'mail_admins', 'file'],
+    },
+    # show info for our first-party apps
+    **{
+        app_name: {'level': 'INFO'}
+        for app_name in ('api', 'lockss', 'perma',)
+    },
+}
+LOGGING['formatters'] = {
+    **LOGGING['formatters'],
+    'standard': {
+        'format': '%(asctime)s [%(levelname)s] %(filename)s %(lineno)d: %(message)s'
+    },
+}
 
 # IP ranges we won't archive.
 # Via http://en.wikipedia.org/wiki/Reserved_IP_addresses
@@ -415,21 +394,32 @@ CLIENT_IP_HEADER = 'REMOTE_ADDR'
 
 # Celery settings
 if os.environ.get('DOCKERIZED'):
-    BROKER_URL = 'amqp://guest:guest@rabbitmq:5672/'
+    CELERY_BROKER_URL = 'redis://perma-redis:6379/1'
 else:
-    BROKER_URL = 'amqp://guest:guest@localhost:5672/'
+    CELERY_BROKER_URL = 'redis://guest:guest@localhost::6379/1'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_SEND_TASK_ERROR_EMAILS = True
 # If a task is running longer than five minutes, ask it to shut down
-CELERYD_TASK_SOFT_TIME_LIMIT=300
+CELERY_TASK_SOFT_TIME_LIMIT=300
 # If a task is running longer than seven minutes, kill it
-CELERYD_TASK_TIME_LIMIT = 420
+CELERY_TASK_TIME_LIMIT = 420
 # Estimate of active celery workers
 # https://github.com/harvard-lil/perma/issues/2438
 # this value will be reset in settings.utils.post_processing
 WORKER_COUNT = 2
+
+CELERY_TASK_ROUTES = {
+    'perma.tasks.upload_to_internet_archive': {'queue': 'ia'},
+    'perma.tasks.delete_from_internet_archive': {'queue': 'ia'},
+    'perma.tasks.delete_all_from_internet_archive': {'queue': 'ia'},
+    'perma.tasks.upload_all_to_internet_archive': {'queue': 'ia'},
+    'perma.tasks.sync_subscriptions_from_perma_payments': {'queue': 'background'},
+    'perma.tasks.cache_playback_status_for_new_links': {'queue': 'background'},
+    'perma.tasks.cache_playback_status': {'queue': 'background'},
+    'perma.tasks.populate_warc_size_fields': {'queue': 'background'},
+    'perma.tasks.populate_warc_size': {'queue': 'background'},
+}
 
 # Control whether Celery tasks should be run in the background or during a request.
 # This should normally be True, but it's handy to not require rabbitmq and celery sometimes.
@@ -447,9 +437,6 @@ INTERNET_ARCHIVE_SECRET_KEY = ''
 
 from dateutil.relativedelta import relativedelta
 LINK_EXPIRATION_TIME = relativedelta(years=2)
-
-# Feature Flag: whether to use Webrecorder or Pywb for playback
-ENABLE_WR_PLAYBACK = False
 
 #
 # Playback
@@ -482,7 +469,7 @@ WR_PERMA_PASSWORD = 'Test123Test123'
 # Time (in seconds) to wait for upload to finalize
 # after data fully uploaded to Webreccorder
 # Or, assume error if upload not done after this many seconds
-WR_REPLAY_UPLOAD_TIMEOUT = 20
+WR_REPLAY_UPLOAD_TIMEOUT = 25
 
 # We have WR sessions set to expire after 120s (see wr-custom.yaml).
 # We don't want the cookie to expire mid-upload or mid-playback.
@@ -492,10 +479,20 @@ WR_REPLAY_UPLOAD_TIMEOUT = 20
 # WR_REPLAY_UPLOAD_TIMEOUT (Perma settings)
 WR_COOKIE_PERMITTED_AGE = 60
 
-# circumventing cloudflare's caching policy
-# using different route for timegate
-TIMEGATE_WARC_ROUTE = '/warc/timegate'
-WARC_ROUTE = '/warc'
+# Seconds to wait before retrying a failed WR playback.
+WR_PLAYBACK_RETRY_AFTER = 1
+
+# We're finding that warcs aren't always available for download from S3
+# instantly, immediately after upload. How long do we want to wait for S3
+# to catch up, during first playback, before raising an error?
+WARC_AVAILABLE_TIMEOUT = 7
+
+CHECK_WARC_BEFORE_PLAYBACK = False
+
+# Disable SameSite protection (https://www.owasp.org/index.php/SameSite)
+# So that we can set iframe cookies properly, when we receive the redirect from Webrecorder
+# https://docs.djangoproject.com/en/3.0/ref/settings/#std:setting-SESSION_COOKIE_SAMESITE
+SESSION_COOKIE_SAMESITE = None
 
 # Sorl settings. This relates to our thumbnail creation.
 # The prod and dev configs are considerably different. See those configs for details.
@@ -526,7 +523,6 @@ TEMPLATE_VISIBLE_SETTINGS = (
     'ENABLE_BATCH_LINKS',
     'PLAYBACK_HOST',
     'HOST',
-    'ENABLE_WR_PLAYBACK'
 )
 
 
@@ -539,8 +535,8 @@ DOMAINS_REQUIRING_UNIQUE_USER_AGENT = []
 APPEND_SLASH = False
 
 # Schedule celerybeat jobs.
-# These will be added to CELERYBEAT_SCHEDULE in settings.utils.post_processing
-CELERYBEAT_JOB_NAMES = []
+# These will be added to CELERY_BEAT_SCHEDULE in settings.utils.post_processing
+CELERY_BEAT_JOB_NAMES = []
 
 
 # tests
@@ -566,17 +562,11 @@ LOCKSS_CRAWL_INTERVAL = "12h"
 LOCKSS_QUORUM = 3
 LOCKSS_DEBUG_IPS = False
 
-CELERY_ROUTES = {
-    'perma.tasks.upload_to_internet_archive': {'queue': 'background'},
-    'perma.tasks.delete_from_internet_archive': {'queue': 'background'},
-    'perma.tasks.upload_all_to_internet_archive': {'queue': 'background'},
-}
-
-
 ENABLE_AV_CAPTURE = False
 RESOURCE_LOAD_TIMEOUT = 45 # seconds to wait for at least one resource to load before giving up on capture
 SHUTDOWN_GRACE_PERIOD = 10 # seconds to allow slow threads to finish before we complete the capture job
 MAX_PROXY_THREADS = 100
+MAX_PROXY_QUEUE_SIZE = 500 # this is the default in https://github.com/internetarchive/warcprox/blob/ee6bc151e1758a50f8af2b8f2d9746aa56ec95fb/warcprox/main.py#L192
 
 WEBPACK_LOADER = {
     'DEFAULT': {

@@ -1,13 +1,21 @@
 from ratelimit.decorators import ratelimit
 from datetime import timedelta
+from dateutil.tz import tzutc
+from io import StringIO
+from link_header import Link as Rel, LinkHeader
 from urllib.parse import urlencode
+import time
+from timegate.utils import closest
+from warcio.timeutils import datetime_to_http_date
+from werkzeug.http import parse_date
 
-from django.contrib.auth.views import redirect_to_login
 from django.forms import widgets
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse, HttpResponseRedirect, HttpResponsePermanentRedirect
-from django.core.urlresolvers import reverse, NoReverseMatch
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import (HttpResponse, HttpResponseRedirect, HttpResponsePermanentRedirect,
+    JsonResponse, HttpResponseNotFound, HttpResponseBadRequest)
+from django.urls import reverse, NoReverseMatch
 from django.conf import settings
+from django.core.files.storage import default_storage
 from django.utils import timezone
 from django.views.generic import TemplateView
 from django.views.decorators.csrf import csrf_exempt
@@ -19,7 +27,9 @@ from django.utils.six.moves.http_client import responses
 from ..models import Link, Registrar, Organization, LinkUser
 from ..forms import ContactForm
 from ..utils import (if_anonymous, ratelimit_ip_key, redirect_to_download,
-    parse_user_agent, protocol, stream_warc_if_permissible, set_options_headers)
+    protocol, stream_warc_if_permissible, set_options_headers,
+    timemap_url, timegate_url, memento_url, memento_data_for_url, url_with_qs_and_hash,
+    get_client_ip, remove_control_characters)
 from ..email import send_admin_email, send_user_email_copy_admins
 
 import logging
@@ -137,18 +147,6 @@ def single_permalink(request, guid):
     if serve_type == 'warc_download':
         return stream_warc_if_permissible(link, request.user)
 
-    if not settings.ENABLE_WR_PLAYBACK:
-        # Special handling for private links on Safari:
-        # Safari won't let us set the auth cookie for the PLAYBACK_HOST domain inside the iframe, unless we've already set a
-        # cookie on that domain outside the iframe. So do a redirect to PLAYBACK_HOST to set a cookie and then come back.
-        # safari=1 in the query string indicates that the redirect has already happened.
-        # See http://labs.fundbox.com/third-party-cookies-with-ie-at-2am/
-        if link.is_private and not request.GET.get('safari'):
-            user_agent = parse_user_agent(raw_user_agent)
-            if user_agent.get('family') == 'Safari':
-                return redirect_to_login(request.build_absolute_uri(),
-                                         "//%s%s" % (settings.PLAYBACK_HOST, reverse('user_management_set_safari_cookie')))
-
     # handle requested capture type
     if serve_type == 'image':
         capture = link.screenshot_capture
@@ -174,7 +172,8 @@ def single_permalink(request, guid):
     # Redirecting to a download page if on mobile
     redirect_to_download_view = redirect_to_download(capture_mime_type, raw_user_agent)
 
-    # If this record was just created by the current user, show them a new record message
+    # If this record was just created by the current user, we want to do some special-handling:
+    # for instance, show them a message in the template, and give the playback extra time to initialize
     new_record = request.user.is_authenticated and link.created_by_id == request.user.id and not link.user_deleted \
                  and link.creation_timestamp > timezone.now() - timedelta(seconds=300)
 
@@ -184,6 +183,7 @@ def single_permalink(request, guid):
     if not link.submitted_description:
         link.submitted_description = "This is an archive of %s from %s" % (link.submitted_url, link.creation_timestamp.strftime("%A %d, %B %Y"))
 
+    logger.info(f"Preparing context for {link.guid}")
     context = {
         'link': link,
         'redirect_to_download_view': redirect_to_download_view,
@@ -201,11 +201,30 @@ def single_permalink(request, guid):
         'protocol': protocol(),
     }
 
-    if settings.ENABLE_WR_PLAYBACK \
-           and context['can_view'] \
-           and not link.user_deleted \
-           and link.ready_for_playback():
-        wr_username = link.init_replay_for_user(request)
+    if context['can_view'] and link.can_play_back():
+        if new_record:
+            logger.info(f"Ensuring warc for {link.guid} has finished uploading.")
+            start_time = time.time()
+            while not default_storage.exists(link.warc_storage_file()):
+                wait_time = time.time() - start_time
+                if wait_time > settings.WARC_AVAILABLE_TIMEOUT:
+                    logger.error(f"Waited {wait_time} for {link.guid}'s warc; still not available.")
+                    return render(request, 'archive/playback-delayed.html', context,  status=500)
+                time.sleep(1)
+        try:
+            logger.info(f"Initializing play back of {link.guid}")
+            wr_username = link.init_replay_for_user(request)
+        except Exception:  # noqa
+            # We are experiencing many varieties of transient flakiness in playback:
+            # second attempts, triggered by refreshing the page, almost always seem to work.
+            # While we debug... let's give playback a second try here, and see if this
+            # noticeably improves user experience.
+            logger.exception(f"First attempt to init replay of {link.guid} failed. (Retrying: observe whether this error recurs.)")
+            time.sleep(settings.WR_PLAYBACK_RETRY_AFTER)
+            logger.info(f"Initializing play back of {link.guid} (2nd try)")
+            wr_username = link.init_replay_for_user(request)
+
+        logger.info(f"Updating context with WR playback information for {link.guid}")
         context.update({
             'wr_host': settings.PLAYBACK_HOST,
             'wr_prefix': link.wr_iframe_prefix(wr_username),
@@ -213,6 +232,7 @@ def single_permalink(request, guid):
             'wr_timestamp': link.creation_timestamp.strftime('%Y%m%d%H%M%S'),
         })
 
+    logger.info(f"Rendering template for {link.guid}")
     response = render(request, 'archive/single-link.html', context)
 
     # Adjust status code
@@ -221,11 +241,26 @@ def single_permalink(request, guid):
     elif not context['can_view'] and link.is_private:
         response.status_code = 403
 
-    # Add memento headers
-    response['Memento-Datetime'] = link.memento_formatted_date
-    link_memento_headers = '<{0}>; rel="original"; datetime="{1}",<{2}>; rel="memento"; datetime="{1}",<{3}>; rel="timegate",<{4}>; rel="timemap"; type="application/link-format"'
-    response['Link'] = link_memento_headers.format(link.ascii_safe_url, link.memento_formatted_date, link.memento, link.timegate, link.timemap)
-
+    # Add memento headers, when appropriate
+    logger.info(f"Deciding whether to include memento headers for {link.guid}")
+    if link.is_visible_to_memento():
+        logger.info(f"Including memento headers for {link.guid}")
+        response['Memento-Datetime'] = datetime_to_http_date(link.creation_timestamp)
+        # impose an arbitrary length-limit on the submitted URL, so that this header doesn't become illegally large
+        url = link.submitted_url[:500]
+        # strip control characters from url, if somehow they slipped in prior to https://github.com/harvard-lil/perma/commit/272b3a79d94a795142940281c9444b45c24a05db
+        url = remove_control_characters(url)
+        response['Link'] = str(
+            LinkHeader([
+                Rel(url, rel='original'),
+                Rel(timegate_url(request, url), rel='timegate'),
+                Rel(timemap_url(request, url, 'link'), rel='timemap', type='application/link-format'),
+                Rel(timemap_url(request, url, 'json'), rel='timemap', type='application/json'),
+                Rel(timemap_url(request, url, 'html'), rel='timemap', type='text/html'),
+                Rel(memento_url(request, link), rel='memento', datetime=datetime_to_http_date(link.creation_timestamp)),
+            ])
+        )
+    logger.info(f"Returning response for {link.guid}")
     return response
 
 
@@ -251,6 +286,82 @@ def set_iframe_session_cookie(request):
 
     # set CORS headers (for both OPTIONS and actual redirect)
     set_options_headers(request, response)
+    return response
+
+
+@if_anonymous(cache_control(max_age=settings.CACHE_MAX_AGES['timemap']))
+@ratelimit(rate=settings.MINUTE_LIMIT, block=True, key=ratelimit_ip_key)
+@ratelimit(rate=settings.HOUR_LIMIT, block=True, key=ratelimit_ip_key)
+@ratelimit(rate=settings.DAY_LIMIT, block=True, key=ratelimit_ip_key)
+def timemap(request, response_format, url):
+    url = url_with_qs_and_hash(url, request.META['QUERY_STRING'])
+    data = memento_data_for_url(request, url)
+    if data:
+        if response_format == 'json':
+            response = JsonResponse(data)
+        elif response_format == 'html':
+            response = render(request, 'memento/timemap.html', data)
+        else:
+            content_type = 'application/link-format'
+            file = StringIO()
+            file.writelines(f"{line},\n" for line in [
+                Rel(data['original_uri'], rel='original'),
+                Rel(data['timegate_uri'], rel='timegate'),
+                Rel(data['self'], rel='self', type='application/link-format'),
+                Rel(data['timemap_uri']['link_format'], rel='timemap', type='application/link-format'),
+                Rel(data['timemap_uri']['json_format'], rel='timemap', type='application/json'),
+                Rel(data['timemap_uri']['html_format'], rel='timemap', type='text/html')
+            ] + [
+                Rel(memento['uri'], rel='memento', datetime=datetime_to_http_date(memento['datetime'])) for memento in data['mementos']['list']
+            ])
+            file.seek(0)
+            response = HttpResponse(file, content_type=f'{content_type}')
+    else:
+        if response_format == 'html':
+            response = render(request, 'memento/timemap.html', {"original_uri": url}, status=404)
+        else:
+            response = HttpResponseNotFound('404 page not found\n')
+
+    response['X-Memento-Count'] = str(len(data['mementos']['list'])) if data else 0
+    return response
+
+
+@if_anonymous(cache_control(max_age=settings.CACHE_MAX_AGES['timegate']))
+@ratelimit(rate=settings.MINUTE_LIMIT, block=True, key=ratelimit_ip_key)
+@ratelimit(rate=settings.HOUR_LIMIT, block=True, key=ratelimit_ip_key)
+@ratelimit(rate=settings.DAY_LIMIT, block=True, key=ratelimit_ip_key)
+def timegate(request, url):
+    # impose an arbitrary length-limit on the submitted URL, so that the headers don't become illegally large
+    url = url_with_qs_and_hash(url, request.META['QUERY_STRING'])[:500]
+    data = memento_data_for_url(request, url)
+    if not data:
+        return HttpResponseNotFound('404 page not found\n')
+
+    accept_datetime = request.META.get('HTTP_ACCEPT_DATETIME')
+    if accept_datetime:
+        accept_datetime = parse_date(accept_datetime)
+        if not accept_datetime:
+            return HttpResponseBadRequest('Invalid value for Accept-Datetime.')
+    else:
+        accept_datetime = timezone.now()
+    accept_datetime = accept_datetime.replace(tzinfo=tzutc())
+
+    target, target_datetime = closest(map(lambda m: m.values(), data['mementos']['list']), accept_datetime)
+
+    response = redirect(target)
+    response['Vary'] = 'accept-datetime'
+    response['Link'] = str(
+        LinkHeader([
+            Rel(data['original_uri'], rel='original'),
+            Rel(data['timegate_uri'], rel='timegate'),
+            Rel(data['timemap_uri']['link_format'], rel='timemap', type='application/link-format'),
+            Rel(data['timemap_uri']['json_format'], rel='timemap', type='application/json'),
+            Rel(data['timemap_uri']['html_format'], rel='timemap', type='text/html'),
+            Rel(data['mementos']['first']['uri'], rel='first memento', datetime=datetime_to_http_date(data['mementos']['first']['datetime'])),
+            Rel(data['mementos']['last']['uri'], rel='last memento', datetime=datetime_to_http_date(data['mementos']['last']['datetime'])),
+            Rel(target, rel='memento', datetime=datetime_to_http_date(target_datetime)),
+        ])
+    )
     return response
 
 
@@ -310,12 +421,19 @@ def contact(request):
 
     if request.method == 'POST':
         form = handle_registrar_fields(ContactForm(request.POST))
+        # Only send email if box2 is filled out and box1 is not.
+        # box1 is display: none, so should never be filled out except by spam bots.
+        if form.data.get('box1'):
+            user_ip = get_client_ip(request)
+            logger.info(f"Suppressing invalid contact email from {user_ip}: {form.data}")
+            return HttpResponseRedirect(reverse('contact_thanks'))
+
         if form.is_valid():
             # Assemble info for email
             from_address = form.cleaned_data['email']
             subject = "[perma-contact] " + form.cleaned_data['subject']
             context = {
-                "message": form.cleaned_data['message'],
+                "message": form.cleaned_data['box2'],
                 "from_address": from_address,
                 "referer": form.cleaned_data['referer'],
                 "affiliation_string": affiliation_string()
@@ -380,7 +498,7 @@ def contact(request):
         form = handle_registrar_fields(
             ContactForm(
                 initial={
-                    'message': message,
+                    'box2': message,
                     'subject': subject,
                     'referer': request.META.get('HTTP_REFERER', ''),
                     'email': getattr(request.user, 'email', '')
@@ -434,11 +552,17 @@ def archive_error(request):
         set_options_headers(request, response)
         return response
 
-    status_code = int(request.GET.get('status', '500'))
+    reported_status = request.GET.get('status')
+    status_code = int(reported_status or '200')
+    if status_code != 404:
+        # We only want to return 404 and 200 here, to avoid complications with Cloudflare.
+        # Other error statuses always (?) indicate some problem with WR, not a status code we
+        # need or want to pass on to the user.
+        status_code = 200
     response = render(request, 'archive/archive-error.html', {
         'err_url': request.GET.get('url'),
         'timestamp': request.GET.get('timestamp'),
-        'status': '{0} {1}'.format(status_code, responses.get(status_code)),
+        'status': f'{status_code} {responses.get(status_code)}',
         'err_msg': request.GET.get('error'),
     }, status=status_code)
 

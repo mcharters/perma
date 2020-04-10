@@ -3,7 +3,6 @@ import csv
 import django_filters
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
-from django.core.files.storage import default_storage
 from django.http import Http404, HttpResponse
 from mptt.exceptions import InvalidMove
 from rest_framework import status
@@ -14,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from perma.utils import run_task, stream_warc, stream_warc_if_permissible, clear_wr_session
-from perma.tasks import upload_to_internet_archive, delete_from_internet_archive, run_next_capture
+from perma.tasks import run_next_capture
 from perma.models import Folder, CaptureJob, Link, Capture, Organization, LinkBatch
 
 from .utils import TastypiePagination, load_parent, raise_general_validation_error, \
@@ -409,8 +408,6 @@ class AuthenticatedLinkListView(BaseView):
             uploaded_file = request.data.get('file')
             if uploaded_file:
                 link.write_uploaded_file(uploaded_file)
-                link.warc_size = default_storage.size(link.warc_storage_file())
-                link.save()
 
             # handle submitted url
             else:
@@ -451,14 +448,19 @@ class AuthenticatedLinkListExportView(BaseView):
 
     @load_parent
     def get(self, request, format=None):
+        def report_status(link):
+            if link.has_capture_job() and link.capture_job.status in ['pending', 'in_progress']:
+                return link.capture_job.status
+            return 'success' if link.can_play_back() else 'failure'
+
         queryset = AuthenticatedLinkListView.load_links(request)
         formatted_data = [
             OrderedDict([
-                ('url', link.capture_job.submitted_url),
-                ('status', "success" if link.capture_job.status == "completed" else "error"),
-                ('error_message', link.capture_job.message),
+                ('url', link.submitted_url),
+                ('status', report_status(link)),
+                ('error_message', link.capture_job.message if link.has_capture_job() else ''),
                 ('title', link.submitted_title),
-                ('perma_link', "{}://{}/{}".format(request.scheme, request.get_host(), link.guid))
+                ('perma_link', f"{request.scheme}://{request.get_host()}/{link.guid}")
             ])
             for link in queryset
         ]
@@ -503,40 +505,38 @@ class AuthenticatedLinkDetailView(BaseView):
             uploaded_file = request.data.get('file')
             if uploaded_file:
 
-                # delete related cdxlines and captures, delete warc (rename)
-                link.delete_related()
+                if link.has_capture_job() and link.capture_job.status ==  'in_progress' :
+                    raise_general_validation_error("Capture in progress: please wait until complete before uploading a replacement.")
+
+                # delete related captures, delete warc (rename), mark capture job as superseded
+                link.delete_related_captures()
                 link.safe_delete_warc()
+                link.mark_capturejob_superseded()
 
                 # write new warc and capture
                 link.write_uploaded_file(uploaded_file, cache_break=True)
-                link.warc_size = default_storage.size(link.warc_storage_file())
-                link.save()
 
                 # delete the link from Webrecorder and
                 # clear the user's Webrecorder session, if any,
                 # so that the new warc is used for this visitor's
                 # next playback of this link.
-                if settings.ENABLE_WR_PLAYBACK:
-                    link.delete_from_wr(request)
-                    clear_wr_session(request)
+                link.delete_from_wr(request)
+                clear_wr_session(request)
 
             # update internet archive if privacy changes
-            if 'is_private' in data and was_private != bool(data.get("is_private")) and link.is_archive_eligible():
+            if 'is_private' in data and was_private != bool(data.get("is_private")) and link.is_permanent():
                 if was_private:
-                    # link was private but has been marked public
-                    run_task(upload_to_internet_archive.s(link_guid=link.guid))
-
+                    # if link was private but has been marked public, mark it for upload.
+                    link.internet_archive_upload_status = 'upload_or_reupload_required'
                 else:
-                    # link was public but has been marked private
-                    run_task(delete_from_internet_archive.s(link_guid=link.guid))
+                    # if link was public but has been marked private, mark it for deletion.
+                    link.internet_archive_upload_status = 'deletion_required'
+                link.save(update_fields=["internet_archive_upload_status"])
 
             # include remaining links in response
             links_remaining = request.user.get_links_remaining()
             serializer.data['links_remaining'] = 'Infinity' if links_remaining[0] == float('inf') else links_remaining[0]
             serializer.data['links_remaining_period'] = links_remaining[1]
-
-            # clear out any caches that might be based on old link data
-            link.clear_cache()
 
             return Response(serializer.data)
 
@@ -549,7 +549,11 @@ class AuthenticatedLinkDetailView(BaseView):
         if not request.user.can_delete(link):
             raise PermissionDenied()
 
-        link.delete_related()  # delete related captures and cdxlines
+        if link.has_capture_job() and link.capture_job.status ==  'in_progress' :
+            raise_general_validation_error("Capture in progress: please wait until complete before deleting.")
+
+        link.delete_related_captures()
+        link.cached_can_play_back = False
         link.safe_delete()
         link.save()
 

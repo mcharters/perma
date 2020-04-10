@@ -10,28 +10,35 @@ def post_process_settings(settings):
     # check secret key
     assert 'SECRET_KEY' in settings and settings['SECRET_KEY'] is not None, "Set DJANGO__SECRET_KEY env var!"
 
-    # Deal with custom setting for CELERY_DEFAULT_QUEUE.
-    # Changing CELERY_DEFAULT_QUEUE only changes the queue name,
+    # Deal with custom setting for CELERY_TASK_DEFAULT_QUEUE.
+    # Changing CELERY_TASK_DEFAULT_QUEUE only changes the queue name,
     # but we need it to change the exchange and routing_key as well.
     # See http://celery.readthedocs.org/en/latest/userguide/routing.html#changing-the-name-of-the-default-queue
     try:
-        default_queue = settings['CELERY_DEFAULT_QUEUE']
+        default_queue = settings['CELERY_TASK_DEFAULT_QUEUE']
         if default_queue != "celery":
             from kombu import Exchange, Queue
-            settings['CELERY_QUEUES'] = (Queue(default_queue, Exchange(default_queue), routing_key=default_queue),)
+            settings['CELERY_TASK_QUEUES'] = (Queue(default_queue, Exchange(default_queue), routing_key=default_queue),)
     except KeyError:
-        # no custom setting for CELERY_DEFAULT_QUEUE
+        # no custom setting for CELERY_TASK_DEFAULT_QUEUE
         pass
 
     # add the named celerybeat jobs
     celerybeat_job_options = {
-        # primary server
+        'cache_playback_status_for_new_links': {
+            'task': 'perma.tasks.cache_playback_status_for_new_links',
+            'schedule': crontab(hour='*', minute='30'),
+        },
         'update-stats': {
             'task': 'perma.tasks.update_stats',
             'schedule': crontab(minute='*'),
         },
-        'send-links-to-internet-archives': {
+        'send-links-to-internet-archive': {
             'task': 'perma.tasks.upload_all_to_internet_archive',
+            'schedule': crontab(minute='0', hour='*'),
+        },
+        'delete-links-from-internet-archive': {
+            'task': 'perma.tasks.delete_all_from_internet_archive',
             'schedule': crontab(minute='0', hour='*'),
         },
         'send-js-errors': {
@@ -51,8 +58,8 @@ def post_process_settings(settings):
             'schedule': crontab(minute='*')
         }
     }
-    settings['CELERYBEAT_SCHEDULE'] = dict(((job, celerybeat_job_options[job]) for job in settings.get('CELERYBEAT_JOB_NAMES', [])),
-                                           **settings.get('CELERYBEAT_SCHEDULE', {}))
+    settings['CELERY_BEAT_SCHEDULE'] = dict(((job, celerybeat_job_options[job]) for job in settings.get('CELERY_BEAT_JOB_NAMES', [])),
+                                           **settings.get('CELERY_BEAT_SCHEDULE', {}))
 
     # Count celery capture workers, by convention named w1, w2, etc.
     # At the moment, this is slow, so we do it once on application

@@ -34,9 +34,9 @@ ADMINS = (
 # - https://docs.djangoproject.com/en/1.4/topics/testing/#speeding-up-the-tests
 # - http://www.daveoncode.com/2013/09/23/effective-tdd-tricks-to-speed-up-django-tests-up-to-10x-faster/
 
-CELERY_ALWAYS_EAGER = True
-CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
-BROKER_BACKEND = 'memory'
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_BROKER_URL = 'memory://localhost/'
 
 # faster collectstatic
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
@@ -58,20 +58,20 @@ STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 #     }
 # }
 
-
+# Work around for https://github.com/jamesls/fakeredis/issues/234
+DJANGO_REDIS_CONNECTION_FACTORY = 'perma.tests.utils.FakeConnectionFactory'
 
 # Use production cache setup, except with fakeredis backend
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
+        "LOCATION": "redis://127.0.0.1:6379/0",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "REDIS_CLIENT_CLASS": "fakeredis.FakeStrictRedis",
         }
     }
 }
-
 
 # Perma.cc encryption keys for communicating with Perma-Payments
 # generated using perma_payments.security.generate_public_private_keys
@@ -140,25 +140,16 @@ TIERS = {
     ]
 }
 
-REMOTE_SELENIUM = True
-if REMOTE_SELENIUM:
-    if os.environ.get('DOCKERIZED'):
-        HOST = 'web:8000'
-        PLAYBACK_HOST = 'web:8000'
-        ALLOWED_HOSTS.append('web')
-        REMOTE_SELENIUM_HOST = 'selenium'
-    else:
-        HOST = 'perma.test:8000'
-        PLAYBACK_HOST = 'perma-archives.test:8000'
-        REMOTE_SELENIUM_HOST = 'localhost'
-
-
-ENABLE_WR_PLAYBACK = True
-if ENABLE_WR_PLAYBACK:
-    assert REMOTE_SELENIUM, "WR Playback must be tested with REMOTE_SELENIUM = True"
-    if os.environ.get('DOCKERIZED'):
-        WR_API = 'http://nginx/api/v1'
-        PLAYBACK_HOST = 'nginx:81'
-    else:
-        WR_API = 'http://perma-archives.test:8089/api/v1'
-        PLAYBACK_HOST = 'perma-archives.test:8092'
+if os.environ.get('DOCKERIZED'):
+    HOST = 'web:8000'
+    PLAYBACK_HOST = 'web:8000'
+    ALLOWED_HOSTS.append('web')
+    REMOTE_SELENIUM_HOST = 'selenium'
+    WR_API = 'http://nginx/api/v1'
+    PLAYBACK_HOST = 'nginx:81'
+else:
+    HOST = 'perma.test:8000'
+    PLAYBACK_HOST = 'perma-archives.test:8000'
+    REMOTE_SELENIUM_HOST = 'localhost'
+    WR_API = 'http://perma-archives.test:8089/api/v1'
+    PLAYBACK_HOST = 'perma-archives.test:8092'
