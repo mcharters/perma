@@ -1322,7 +1322,7 @@ def run_next_capture():
     run_task(run_next_capture.s())
 
 
-@shared_task()
+@shared_task
 def update_stats():
     """
     run once per minute by celerybeat. logs our minute-by-minute activity,
@@ -1486,7 +1486,7 @@ def upload_all_to_internet_archive(limit=None):
     logger.info(f"Queued {queued} links for upload to IA.")
 
 
-@shared_task()
+@shared_task
 def upload_to_internet_archive(link_guid):
     """
     Call synchronously from the Django shell with the invocation:
@@ -1558,7 +1558,7 @@ def upload_to_internet_archive(link_guid):
         link.save(update_fields=['internet_archive_upload_status'])
 
 
-@shared_task()
+@shared_task
 def send_js_errors():
     """
     finds all uncaught JS errors recorded in the last week, sends a report if errors exist
@@ -1576,7 +1576,7 @@ def send_js_errors():
         return errors
 
 
-@shared_task()
+@shared_task
 def verify_webrecorder_api_available():
     """
     UptimeRobot-like helper to verify that the Webrecorder API is available.
@@ -1591,7 +1591,7 @@ def verify_webrecorder_api_available():
     assert "description: Webrecorder API" in r.text
 
 
-@shared_task()
+@shared_task
 def sync_subscriptions_from_perma_payments():
     """
     Perma only learns about changes to a customer's record in Perma
