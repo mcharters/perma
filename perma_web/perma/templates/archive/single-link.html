@@ -71,9 +71,16 @@
   {% endif %}
 
     <div class="primary-segment row">
-      <div class="col col-sm-10 _main {% if request.user.is_authenticated %}_authenticated{% else %}_unauthenticated{% endif %}">
+      <div class="col col-sm-2 _details">
         <div class="content">
-          <p class="title"><span class="_verbose">This is an </span>{% if link.is_private %}Private {% endif %}Archived record</p>
+          <button id="details-button" class="btn btn-ui-small details" type="button">
+            <span>Show record details</span>
+          </button>
+        </div>
+      </div>
+      <div class="col col-sm-4 _main {% if request.user.is_authenticated %}_authenticated{% else %}_unauthenticated{% endif %}">
+        <div class="content">
+          <p class="title"><span class="_verbose">This is a </span>{% if link.is_private %}Private {% endif %}<span class="logo">Perma.cc</span> record</p>
           <p class="creation"><span class="cat">{% if capture.user_upload %}Uploaded{% else %}Captured{% endif %}</span> {{ link.creation_timestamp|local_datetime }}
             {% if serve_type != 'image' %}
               {% if link.screenshot_capture and link.screenshot_capture.status == 'success' %}
@@ -93,6 +100,10 @@
                   <a href="{% url 'single_permalink' link.guid %}">See the Capture View</a>
                 {% endif %}
               </span>
+            {% endif %}
+            {% if request.user.is_authenticated %}
+            {% else %}
+              <a class="about" href="{% url 'about' %}" target="_blank">What is Perma.cc?</a>
             {% endif %}
           </p>
         </div>
@@ -209,6 +220,27 @@
       </script>
 
     </div>
+
+    {% if can_view and link.is_private %}
+      <div class="banner banner-status row _isDarchive">
+        <strong><a href="{% url 'docs_perma_link_creation' %}#private-records">This record is private{% if link.private_reason == 'policy' %} by Perma.cc policy{% elif link.private_reason == 'takedown' %} at the content owner's request, and it cannot be made public on Perma.cc{% endif %}.</a></strong>
+          It’s only visible to {% if link.organization %}members of {{ link.organization }} and the {{ link.organization.registrar }} registrar{% else %}you{% endif %}.
+          {% if link.private_reason == 'user' %}You can make this link public under 'Show record details.'{% endif %}
+      </div>
+    {% endif %}
+
+    {% if new_record %}
+      <div class="banner banner-status row _isNewRecord">
+        <span class="success">Success!</span>
+        <span class="message verbose">Your new Perma Link is <strong>https://{{ request.get_host }}{% url 'single_permalink' link.guid %}</strong></span>
+        <span class="link-options verbose">
+          <a class="edit-link" style="cursor:pointer;">Edit<span class="_verbose _toDesktop"> link details</span></a>
+          <span class="_verbose _toDesktop"> (Perma Links are permanent after 24 hours)</span>
+        </span>
+        <a class="action new-link" href="{% url 'create_link' %}">Make a new Perma Link</a>
+      </div>
+    {% endif %}
+
   </header>
 
 {% endblock %}

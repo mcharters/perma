@@ -534,7 +534,7 @@ header .primary-segment {
   @include respond-tablet {
     height: $height-record-hed;
     // 70% should work, but oddly sometimes forces undesired wrapping
-    width: 100%;
+    width: 69%;
     padding-right: $double;
     border-bottom: 1px solid $color-trans-white;
     .content {
@@ -544,10 +544,10 @@ header .primary-segment {
   @include respond-desktop {
     border-left: 1px solid $color-trans-white;
     border-bottom: none;
-    width: 78%;
+    width: 40%;
   }
   @include respond-wide {
-    width: 78%;
+    width: 46%;
     padding-left: $grid * 3;
   }
   .content {
@@ -558,7 +558,7 @@ header .primary-segment {
 .col._livepage {
   padding: 0;
   order: 4;
-  width: 100%;
+  width: 50%;
   @include respond-desktop {
     height: $height-record-hed;
     width: 18%;
