@@ -211,7 +211,7 @@ services:
     ports:
       # The WR API. See perma_web/perma/settings/settings_common "WR_API"
       # for a description of when to expose this port
-      # - "127.0.0.1:8089:80"
+      - "127.0.0.1:8089:80"
       # WR "content"/playback host
       - "127.0.0.1:8092:81"
     extra_hosts:
