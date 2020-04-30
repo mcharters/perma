@@ -40,6 +40,8 @@ from django.views.decorators.debug import sensitive_variables
 
 from .exceptions import InvalidTransmissionException, WebrecorderException
 
+import pdb
+
 logger = logging.getLogger(__name__)
 warn = logger.warn
 
@@ -660,6 +662,7 @@ def clear_wr_session(request, error_if_wr_user_not_found=False):
 
 
 def query_wr_api(method, path, cookie, valid_if, json=None, data=None):
+    pdb.set_trace()
     # Make the request
     try:
         response = requests.request(
