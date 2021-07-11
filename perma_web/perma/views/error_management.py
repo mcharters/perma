@@ -57,3 +57,4 @@ def server_error(request):
         https://github.com/django/django/blob/master/django/views/defaults.py#L97
     '''
     return HttpResponseServerError(render(request, '500.html'))
+
